@@ -2,20 +2,21 @@ import { Context } from 'hono';
 import { CollaborationSliderService } from '../services/collaboration-slider.service';
 import { z } from 'zod';
 import { AppEnv } from '../types';
-import {
-  UploadedFile,
-  validateFile,
-  saveFile,
-  generateUniqueFilename,
-  deleteFile,
-} from '../utils/file-upload';
+// R2 upload temporarily disabled
+// import {
+//   UploadedFile,
+//   validateFile,
+//   saveFile,
+//   generateUniqueFilename,
+//   deleteFile,
+// } from '../utils/file-upload';
 
 const createSliderSchema = z.object({
   title: z.string().min(1).max(150),
-  description: z.string().max(500).optional().nullable(),
-  link_url: z.string().url('Invalid URL format').optional().nullable(),
-  display_order: z.coerce.number().int().optional().default(0),
-  is_active: z.coerce.number().int().min(0).max(1).optional().default(1),
+  description: z.string().max(500).optional().nullable().default(null),
+  link_url: z.string().url('Invalid URL format').optional().nullable().default(null),
+  display_order: z.coerce.number().int().default(0),
+  is_active: z.coerce.number().int().min(0).max(1).default(1),
 });
 
 const updateSliderSchema = z.object({
@@ -171,25 +172,10 @@ export class CollaborationSliderController {
         );
       }
 
-      const formData = await c.req.parseBody();
-      const imageFile = formData.image as File;
-      const title = formData.title as string;
-      const description = formData.description as string | undefined;
-      const linkUrl = formData.link_url as string | undefined;
-      const displayOrder = formData.display_order as string | undefined;
-      const isActive = formData.is_active as string | undefined;
-
-      if (!imageFile || !(imageFile instanceof File)) {
-        return c.json(
-          {
-            success: false,
-            message: 'Image file is required',
-          },
-          400
-        );
-      }
-
-      if (!title) {
+      const body = await c.req.json();
+      
+      // Simple validation
+      if (!body.title) {
         return c.json(
           {
             success: false,
@@ -199,40 +185,14 @@ export class CollaborationSliderController {
         );
       }
 
-      const arrayBuffer = await imageFile.arrayBuffer();
-      const mimeType = imageFile.type;
-      const size = imageFile.size;
-      const originalName = imageFile.name;
-
-      const uploadedFile: UploadedFile = {
-        arrayBuffer,
-        mimeType,
-        originalName,
-        size,
-      };
-
-      validateFile(uploadedFile);
-
-      const uniqueFilename = generateUniqueFilename(originalName);
-      await saveFile(c.env.UPLOADS, arrayBuffer, uniqueFilename);
-      const imagePath = uniqueFilename;
-
-      const validatedData = createSliderSchema.parse({
-        title,
-        description: description || null,
-        link_url: linkUrl || null,
-        display_order: displayOrder ? parseInt(displayOrder) : 0,
-        is_active: isActive !== undefined ? parseInt(isActive) : 1,
-      });
-
       const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
       const slider = await service.create(user.id_user, {
-        title: validatedData.title,
-        image_path: imagePath,
-        description: validatedData.description,
-        link_url: validatedData.link_url,
-        display_order: validatedData.display_order,
-        is_active: validatedData.is_active,
+        title: body.title,
+        image_path: body.image_path || 'placeholder.jpg',
+        description: body.description ?? null,
+        link_url: body.link_url ?? null,
+        display_order: body.display_order ?? 0,
+        is_active: body.is_active ?? 1,
       });
 
       return c.json(
@@ -244,28 +204,7 @@ export class CollaborationSliderController {
         201
       );
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return c.json(
-          {
-            success: false,
-            message: 'Validation error',
-            errors: error.errors,
-          },
-          400
-        );
-      }
-
       if (error instanceof Error) {
-        if (error.message.includes('Invalid file type') || error.message.includes('File size exceeds')) {
-          return c.json(
-            {
-              success: false,
-              message: error.message,
-            },
-            400
-          );
-        }
-
         return c.json(
           {
             success: false,
@@ -309,48 +248,27 @@ export class CollaborationSliderController {
         );
       }
 
-      const formData = await c.req.parseBody();
-      const imageFile = formData.image as File | undefined;
-      const title = formData.title as string | undefined;
-      const description = formData.description as string | undefined;
-      const linkUrl = formData.link_url as string | undefined;
-      const displayOrder = formData.display_order as string | undefined;
-      const isActive = formData.is_active as string | undefined;
+      const body = await c.req.json();
+      const title = body.title as string | undefined;
+      const image_path = body.image_path as string | undefined;
+      const description = body.description as string | undefined;
+      const linkUrl = body.link_url as string | undefined;
+      const displayOrder = body.display_order as number | undefined;
+      const isActive = body.is_active as number | undefined;
 
       const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
       const oldSlider = await service.findById(id, user.id_user);
-      let imagePath: string | undefined;
 
-      if (imageFile && imageFile instanceof File) {
-        const arrayBuffer = await imageFile.arrayBuffer();
-        const mimeType = imageFile.type;
-        const size = imageFile.size;
-        const originalName = imageFile.name;
-
-        const uploadedFile: UploadedFile = {
-          arrayBuffer,
-          mimeType,
-          originalName,
-          size,
-        };
-
-        validateFile(uploadedFile);
-
-        const uniqueFilename = generateUniqueFilename(originalName);
-        await saveFile(c.env.UPLOADS, arrayBuffer, uniqueFilename);
-        imagePath = uniqueFilename;
-
-        if (oldSlider.image_path) {
-          await deleteFile(c.env.UPLOADS, oldSlider.image_path);
-        }
-      }
+      // Temporarily disabled file upload - use provided image_path or keep old one
+      const imagePath = image_path || oldSlider.image_path;
 
       const validatedData = updateSliderSchema.parse({
         title,
+        image_path: imagePath,
         description: description || null,
         link_url: linkUrl || null,
-        display_order: displayOrder ? parseInt(displayOrder) : undefined,
-        is_active: isActive !== undefined ? parseInt(isActive) : undefined,
+        display_order: displayOrder !== undefined ? displayOrder : undefined,
+        is_active: isActive !== undefined ? isActive : undefined,
       });
 
       const slider = await service.update(
@@ -358,7 +276,7 @@ export class CollaborationSliderController {
         user.id_user,
         {
           title: validatedData.title,
-          image_path: imagePath,
+          image_path: validatedData.image_path,
           description: validatedData.description,
           link_url: validatedData.link_url,
           display_order: validatedData.display_order,
@@ -385,16 +303,6 @@ export class CollaborationSliderController {
       }
 
       if (error instanceof Error) {
-        if (error.message.includes('Invalid file type') || error.message.includes('File size exceeds')) {
-          return c.json(
-            {
-              success: false,
-              message: error.message,
-            },
-            400
-          );
-        }
-
         return c.json(
           {
             success: false,

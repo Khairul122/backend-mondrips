@@ -122,7 +122,7 @@ export class AuthService {
       throw new Error('Account is deactivated');
     }
 
-    const accessToken = this.generateAccessToken({
+    const accessToken = await this.generateAccessToken({
       id_user: user.id_user,
       email: user.email,
       username: user.username,
@@ -155,8 +155,8 @@ export class AuthService {
     });
   }
 
-  private generateAccessToken(payload: Omit<TokenPayload, 'exp' | 'iat'>): string {
-    return generateAccessToken(payload, this.jwtSecret, this.jwtExpiresIn);
+  private async generateAccessToken(payload: Omit<TokenPayload, 'exp' | 'iat'>): Promise<string> {
+    return await generateAccessToken(payload, this.jwtSecret, this.jwtExpiresIn);
   }
 
   private async generateTokens(user: any): Promise<AuthTokens> {
@@ -168,7 +168,7 @@ export class AuthService {
     };
 
     return {
-      accessToken: this.generateAccessToken(payload),
+      accessToken: await this.generateAccessToken(payload),
     };
   }
 
@@ -186,8 +186,8 @@ export class AuthService {
     };
   }
 
-  verifyToken(token: string): TokenPayload {
-    const payload = verifyJWT(token, this.jwtSecret);
+  async verifyToken(token: string): Promise<TokenPayload> {
+    const payload = await verifyJWT(token, this.jwtSecret);
     return {
       id_user: payload.id_user,
       email: payload.email,

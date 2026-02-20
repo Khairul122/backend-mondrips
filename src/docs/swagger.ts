@@ -4,7 +4,7 @@ import { AppEnv } from '../types';
 
 const app = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variables'] }>();
 
-const apiDoc = {
+const getApiDoc = (c: AppEnv) => ({
   openapi: '3.0.0',
   info: {
     title: 'Mondrips API',
@@ -13,8 +13,12 @@ const apiDoc = {
   },
   servers: [
     {
-      url: 'https://backend-mondrips.workers.dev',
-      description: 'Cloudflare Workers Production',
+      url: 'https://backend-mondrips-production.mondrips-api.workers.dev',
+      description: 'Production',
+    },
+    {
+      url: 'https://backend-mondrips-staging.mondrips-api.workers.dev',
+      description: 'Staging',
     },
     {
       url: 'http://localhost:8787',
@@ -205,6 +209,33 @@ const apiDoc = {
         },
       },
     },
+    '/api/auth/change-password': {
+      put: {
+        tags: ['Authentication'],
+        summary: 'Change password',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['current_password', 'new_password'],
+                properties: {
+                  current_password: { type: 'string', minLength: 1 },
+                  new_password: { type: 'string', minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Password changed' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/api/sosial-media': {
       get: {
         tags: ['Sosial Media'],
@@ -232,6 +263,67 @@ const apiDoc = {
         },
       },
     },
+    '/api/sosial-media/{id}': {
+      get: {
+        tags: ['Sosial Media'],
+        summary: 'Get social media by ID',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Social media retrieved' },
+          '404': { description: 'Not found' },
+        },
+      },
+      put: {
+        tags: ['Sosial Media'],
+        summary: 'Update social media',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/CreateSosialMediaRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Updated' },
+          '400': { description: 'Validation error' },
+          '404': { description: 'Not found' },
+        },
+      },
+      delete: {
+        tags: ['Sosial Media'],
+        summary: 'Delete social media',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Deleted' },
+          '404': { description: 'Not found' },
+        },
+      },
+    },
     '/api/collaboration-sliders/public': {
       get: {
         tags: ['Collaboration Sliders'],
@@ -253,6 +345,13 @@ const apiDoc = {
         tags: ['Collaboration Sliders'],
         summary: 'List user sliders',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'order',
+            in: 'query',
+            schema: { type: 'string', enum: ['ASC', 'DESC'] },
+          },
+        ],
         responses: {
           '200': { description: 'List retrieved' },
           '401': { description: 'Unauthorized' },
@@ -264,8 +363,19 @@ const apiDoc = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            'multipart/form-data': {
-              schema: { $ref: '#/components/schemas/CreateCollaborationSliderRequest' },
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['title', 'image_path'],
+                properties: {
+                  title: { type: 'string', minLength: 1, maxLength: 150, example: 'LA MOUCHE' },
+                  image_path: { type: 'string', format: 'uri', example: 'https://example.com/image.jpg' },
+                  description: { type: 'string', maxLength: 500, nullable: true },
+                  link_url: { type: 'string', format: 'uri', nullable: true },
+                  display_order: { type: 'integer', example: 1 },
+                  is_active: { type: 'integer', minimum: 0, maximum: 1, example: 1 },
+                },
+              },
             },
           },
         },
@@ -275,10 +385,147 @@ const apiDoc = {
         },
       },
     },
+    '/api/collaboration-sliders/{id}': {
+      get: {
+        tags: ['Collaboration Sliders'],
+        summary: 'Get slider by ID',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Slider retrieved' },
+          '404': { description: 'Not found' },
+        },
+      },
+      put: {
+        tags: ['Collaboration Sliders'],
+        summary: 'Update slider',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string', minLength: 1, maxLength: 150 },
+                  image_path: { type: 'string', format: 'uri' },
+                  description: { type: 'string', maxLength: 500, nullable: true },
+                  link_url: { type: 'string', format: 'uri', nullable: true },
+                  display_order: { type: 'integer' },
+                  is_active: { type: 'integer', minimum: 0, maximum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Updated' },
+          '400': { description: 'Validation error' },
+          '404': { description: 'Not found' },
+        },
+      },
+      delete: {
+        tags: ['Collaboration Sliders'],
+        summary: 'Delete slider',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        responses: {
+          '200': { description: 'Deleted' },
+          '404': { description: 'Not found' },
+        },
+      },
+    },
+    '/api/collaboration-sliders/{id}/order': {
+      patch: {
+        tags: ['Collaboration Sliders'],
+        summary: 'Update display order',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['display_order'],
+                properties: {
+                  display_order: { type: 'integer', example: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Order updated' },
+          '400': { description: 'Validation error' },
+          '404': { description: 'Not found' },
+        },
+      },
+    },
+    '/api/collaboration-sliders/{id}/status': {
+      patch: {
+        tags: ['Collaboration Sliders'],
+        summary: 'Toggle slider status',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+          },
+        ],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['is_active'],
+                properties: {
+                  is_active: { type: 'integer', minimum: 0, maximum: 1, example: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Status updated' },
+          '400': { description: 'Validation error' },
+          '404': { description: 'Not found' },
+        },
+      },
+    },
   },
-};
+} as const);
 
 app.get('/', swaggerUI({ url: '/openapi.json' }));
-app.get('/openapi.json', (c) => c.json(apiDoc));
+app.get('/openapi.json', (c) => c.json(getApiDoc(c)));
 
 export default app;

@@ -1,6 +1,6 @@
 import { SosialMediaRepository } from '../repositories/sosial-media.repository';
 import { SosialMediaResponse, CreateSosialMediaDTO } from '../models/sosial-media.model';
-import Database from '../config/database';
+import { D1Database } from '@cloudflare/workers-types';
 
 export interface CreateSosialMediaInput {
   nama_platform: string;
@@ -19,7 +19,7 @@ export interface UpdateSosialMediaInput {
 export class SosialMediaService {
   private sosialMediaRepository: SosialMediaRepository;
 
-  constructor(db: Database) {
+  constructor(db: D1Database) {
     this.sosialMediaRepository = new SosialMediaRepository(db);
   }
 

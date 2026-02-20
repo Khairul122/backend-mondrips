@@ -1,67 +1,69 @@
-import Database from '../config/database';
+import { D1Database } from '@cloudflare/workers-types';
 import { User, CreateUserDTO, UpdateUserDTO } from '../models/user.model';
 
 export class UserRepository {
-  private db: Database;
+  private db: D1Database;
 
-  constructor(db: Database) {
+  constructor(db: D1Database) {
     this.db = db;
   }
 
   async findById(id: number): Promise<User | null> {
-    const user = await this.db.first<User>(
-      'SELECT * FROM users WHERE id_user = ? LIMIT 1',
-      [id]
-    );
-    return user || null;
+    const user = await this.db
+      .prepare('SELECT * FROM users WHERE id_user = ? LIMIT 1')
+      .bind(id)
+      .first();
+    return (user as User) || null;
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await this.db.first<User>(
-      'SELECT * FROM users WHERE email = ? LIMIT 1',
-      [email]
-    );
-    return user || null;
+    const user = await this.db
+      .prepare('SELECT * FROM users WHERE email = ? LIMIT 1')
+      .bind(email)
+      .first();
+    return (user as User) || null;
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const user = await this.db.first<User>(
-      'SELECT * FROM users WHERE username = ? LIMIT 1',
-      [username]
-    );
-    return user || null;
+    const user = await this.db
+      .prepare('SELECT * FROM users WHERE username = ? LIMIT 1')
+      .bind(username)
+      .first();
+    return (user as User) || null;
   }
 
   async findByEmailOrUsername(identifier: string): Promise<User | null> {
-    const user = await this.db.first<User>(
-      'SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1',
-      [identifier, identifier]
-    );
-    return user || null;
+    const user = await this.db
+      .prepare('SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1')
+      .bind(identifier, identifier)
+      .first();
+    return (user as User) || null;
   }
 
   async findByRememberToken(token: string): Promise<User | null> {
-    const user = await this.db.first<User>(
-      'SELECT * FROM users WHERE remember_token = ? LIMIT 1',
-      [token]
-    );
-    return user || null;
+    const user = await this.db
+      .prepare('SELECT * FROM users WHERE remember_token = ? LIMIT 1')
+      .bind(token)
+      .first();
+    return (user as User) || null;
   }
 
   async create(data: CreateUserDTO): Promise<number> {
-    const id = await this.db.insert(
-      `INSERT INTO users (email, username, password, full_name, role, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [
+    const result = await this.db
+      .prepare(
+        `INSERT INTO users (email, username, password, full_name, role, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+      )
+      .bind(
         data.email,
         data.username,
         data.password,
         data.full_name,
         data.role || 'user',
-        1,
-      ]
-    );
-    return id;
+        1
+      )
+      .run();
+    return (result as any).meta?.last_row_id || 0;
   }
 
   async update(id: number, data: UpdateUserDTO): Promise<boolean> {
@@ -108,10 +110,10 @@ export class UserRepository {
     fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await this.db.execute(
-      `UPDATE users SET ${fields.join(', ')} WHERE id_user = ?`,
-      values
-    );
+    await this.db
+      .prepare(`UPDATE users SET ${fields.join(', ')} WHERE id_user = ?`)
+      .bind(...values)
+      .run();
 
     return true;
   }
@@ -125,8 +127,8 @@ export class UserRepository {
       params.push(excludeId);
     }
 
-    const result = await this.db.first<{ count: number }>(sql, params);
-    return result ? result.count > 0 : false;
+    const result = await this.db.prepare(sql).bind(...params).first();
+    return result ? (result as any).count > 0 : false;
   }
 
   async usernameExists(username: string, excludeId?: number): Promise<boolean> {
@@ -138,7 +140,7 @@ export class UserRepository {
       params.push(excludeId);
     }
 
-    const result = await this.db.first<{ count: number }>(sql, params);
-    return result ? result.count > 0 : false;
+    const result = await this.db.prepare(sql).bind(...params).first();
+    return result ? (result as any).count > 0 : false;
   }
 }

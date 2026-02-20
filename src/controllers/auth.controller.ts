@@ -1,4 +1,5 @@
 import { Context } from 'hono';
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { AuthService } from '../services/auth.service';
 import { UserRepository } from '../repositories/user.repository';
 import { z } from 'zod';
@@ -98,8 +99,13 @@ export class AuthController {
       });
 
       if (result.tokens.refreshToken) {
-        const maxAge = 30 * 24 * 60 * 60;
-        c.header('Set-Cookie', `remember_token=${result.tokens.refreshToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
+        setCookie(c, 'remember_token', result.tokens.refreshToken, {
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'Strict',
+        });
       }
 
       return c.json({
@@ -146,7 +152,7 @@ export class AuthController {
 
   async refresh(c: Context<AppEnv>) {
     try {
-      const rememberToken = c.req.cookie('remember_token');
+      const rememberToken = getCookie(c, 'remember_token');
 
       if (!rememberToken) {
         return c.json(
@@ -219,7 +225,12 @@ export class AuthController {
 
       await authService.logout(user.id_user);
 
-      c.header('Set-Cookie', 'remember_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+      deleteCookie(c, 'remember_token', {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+      });
 
       return c.json({
         success: true,

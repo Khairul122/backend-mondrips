@@ -1,6 +1,11 @@
 # Mondrips API - Cloudflare Workers
 
-A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and deployed on **Cloudflare Workers**. This project uses **Cloudflare D1** (SQLite) for database and **Cloudflare R2** for file storage.
+A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and deployed on **Cloudflare Workers**. This project uses **Cloudflare D1** (SQLite) for database and features comprehensive authentication, social media management, and collaboration slider management.
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
+
+---
 
 ## 📋 Table of Contents
 
@@ -12,50 +17,64 @@ A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and 
 - [Quick Start](#-quick-start)
 - [Configuration](#-configuration)
 - [API Documentation](#-api-documentation)
+- [API Endpoints](#-api-endpoints)
+- [Request/Response Examples](#-requestresponse-examples)
 - [Security](#-security)
 - [Deployment](#-deployment)
+- [Database Schema](#-database-schema)
+- [Testing](#-testing)
+- [Troubleshooting](#-troubleshooting)
+- [Resources](#-resources)
 
 ---
 
 ## 🛠 Tech Stack
 
+| Technology | Purpose | Version |
+|------------|---------|---------|
+| **TypeScript** | Type-safe development | ^5.3.0 |
+| **Hono** | Ultra-lightweight web framework for Edge | ^4.3.0 |
+| **Cloudflare Workers** | Serverless Edge runtime | Latest |
+| **Cloudflare D1** | SQLite database (serverless) | Latest |
+| **Zod** | Runtime validation | ^3.22.4 |
+| **@hono/swagger-ui** | API documentation | ^0.3.0 |
+| **@hono/zod-validator** | Request validation | ^0.2.0 |
+
+### Security & Utilities
+
 | Technology | Purpose |
 |------------|---------|
-| **TypeScript** | Type-safe development |
-| **Hono** | Ultra-lightweight web framework for Edge |
-| **Cloudflare Workers** | Serverless Edge runtime |
-| **Cloudflare D1** | SQLite database (serverless) |
-| **Cloudflare R2** | Object storage for file uploads |
-| **Web Crypto API** | Password hashing & JWT (native) |
-| **Zod** | Runtime validation |
-| **@hono/swagger-ui** | API documentation |
+| **Web Crypto API** | Password hashing (SHA-256) & JWT signing (HMAC) |
+| **HTTPOnly Cookies** | Secure remember token storage |
+| **CORS** | Cross-origin resource sharing |
 
 ---
 
 ## ✨ Features
 
-### Authentication Module
-- **User Registration** with email/username uniqueness
-- **Login** with JWT Access Token
-- **Remember Me** with HTTPOnly cookies
-- **Token Refresh** endpoint
-- **Logout** with session invalidation
-- **Password Change** with verification
-- **Profile Retrieval**
+### 🔐 Authentication Module
+- ✅ **User Registration** with email/username uniqueness validation
+- ✅ **Login** with JWT Access Token (15 minutes expiry)
+- ✅ **Remember Me** with HTTPOnly cookies (30 days expiry)
+- ✅ **Token Refresh** endpoint for seamless session extension
+- ✅ **Logout** with session invalidation
+- ✅ **Password Change** with current password verification
+- ✅ **Profile Retrieval** (GET /api/auth/me)
 
-### Social Media Management
-- Full CRUD for social media links
-- User-scoped data (One-to-Many relation)
-- URL format validation
-- Platform name length constraints
+### 📱 Social Media Management
+- ✅ Full **CRUD** operations for social media links
+- ✅ User-scoped data (One-to-Many relation)
+- ✅ URL format validation
+- ✅ Platform name length constraints (1-50 chars)
+- ✅ Username path validation (1-255 chars)
 
-### Collaboration Sliders Management
-- **Image Upload** to R2 Storage (JPG, JPEG, PNG, WEBP)
-- **Display Order** management
-- **Active/Inactive** toggle
-- **Public Endpoint** for active sliders
-- **Automatic File Cleanup** on delete/update
-- **File Validation** (type + size limit 2MB)
+### 🎨 Collaboration Sliders Management
+- ✅ Full **CRUD** operations for slider management
+- ✅ **Display Order** management for custom sorting
+- ✅ **Active/Inactive** toggle for visibility control
+- ✅ **Public Endpoint** for active sliders (no auth required)
+- ✅ **Image Path** support (URL-based, R2 integration ready)
+- ✅ User ownership validation
 
 ---
 
@@ -76,20 +95,21 @@ A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and 
 │  └──────────────────────────────────────────────────────┘   │
 │         ↓                      ↓                             │
 │  ┌─────────────┐        ┌─────────────┐                     │
-│  │  D1 (SQLite)│        │ R2 Storage  │                     │
+│  │  D1 (SQLite)│        │ R2 Storage  │ (Optional)          │
 │  └─────────────┘        └─────────────┘                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Key Differences from Node.js Version
+### Architecture Layers
 
-| Feature | Node.js Version | Workers Version |
-|---------|-----------------|-----------------|
-| Database | MySQL | Cloudflare D1 (SQLite) |
-| File Storage | Filesystem | Cloudflare R2 |
-| Password Hash | bcryptjs | Web Crypto API (SHA-256) |
-| JWT | jsonwebtoken | Custom Web Crypto implementation |
-| Runtime | Node.js | V8 Isolates (Edge) |
+| Layer | Responsibility | Files |
+|-------|---------------|-------|
+| **Routes** | HTTP method & path definition | `src/routes/*.ts` |
+| **Controllers** | Request/Response handling, Zod validation | `src/controllers/*.ts` |
+| **Services** | Business logic, token generation | `src/services/*.ts` |
+| **Repositories** | D1 database queries (parameterized) | `src/repositories/*.ts` |
+| **Models** | TypeScript interfaces & DTOs | `src/models/*.ts` |
+| **Middlewares** | Auth validation, CORS | `src/middlewares/*.ts` |
 
 ---
 
@@ -98,8 +118,8 @@ A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and 
 ```
 backend-mondrips/
 ├── src/
-│   ├── config/           # D1 database wrapper
-│   │   └── database.ts
+│   ├── config/           # Database configuration
+│   │   └── database.ts   # D1 wrapper (direct usage)
 │   ├── controllers/      # Request handlers
 │   │   ├── auth.controller.ts
 │   │   ├── sosial-media.controller.ts
@@ -128,15 +148,18 @@ backend-mondrips/
 │   ├── utils/            # Utilities
 │   │   ├── crypto.ts     # Password hashing
 │   │   ├── jwt.ts        # JWT sign/verify
-│   │   └── file-upload.ts # R2 operations
+│   │   └── file-upload.ts # File utilities
 │   ├── types.ts          # Type definitions
 │   └── index.ts          # Entry point
-├── schema.sql            # D1 database schema
+├── migrations/           # Database migrations
+│   ├── 001_create_users_table.sql
+│   ├── 002_create_sosial_media_table.sql
+│   └── 003_create_collaboration_sliders_table.sql
+├── schema.sql            # Combined D1 schema
 ├── wrangler.toml         # Workers configuration
 ├── package.json          # Dependencies
 ├── tsconfig.json         # TypeScript config
-├── .dev.vars             # Local dev variables
-└── DEPLOYMENT.md         # Detailed deployment guide
+└── README.md             # This file
 ```
 
 ---
@@ -147,11 +170,13 @@ backend-mondrips/
 # Node.js 18+ or Bun
 node --version  # v18.x or higher
 
-# Wrangler CLI
+# Wrangler CLI (Cloudflare Workers CLI)
 npm install -g wrangler
+# or
+bun add -g wrangler
 
-# Cloudflare account (free tier works)
-npx wrangler login
+# Cloudflare account (free tier sufficient)
+# Sign up at: https://dash.cloudflare.com/sign-up/workers
 ```
 
 ---
@@ -166,49 +191,57 @@ bun install
 npm install
 ```
 
-### 2. Create D1 Database
+### 2. Login to Cloudflare
+
+```bash
+npx wrangler login
+```
+
+### 3. Create D1 Database
 
 ```bash
 npx wrangler d1 create db_mondrips
-# Copy the database_id from output
 ```
 
-Update `wrangler.toml` with your `database_id`.
+**Copy the `database_id` from output** and update `wrangler.toml`.
 
-### 3. Create R2 Bucket
+### 4. Create R2 Bucket (Optional - for file uploads)
 
 ```bash
 npx wrangler r2 bucket create mondrips-uploads
 ```
 
-### 4. Run Migrations
+### 5. Run Database Migrations
 
 ```bash
-npx wrangler d1 execute db_mondrips --file=schema.sql
+npx wrangler d1 execute db_mondrips --remote --file=schema.sql
 ```
 
-### 5. Set Secrets
+### 6. Set Secrets
 
 ```bash
 npx wrangler secret put JWT_SECRET
-# Enter a random string (min 32 characters)
+# Enter a strong random string (min 32 characters)
 ```
 
-### 6. Run Locally
+### 7. Run Locally
 
 ```bash
 npx wrangler dev
 ```
 
-Access at: `http://localhost:8787`
+**Access at:**
+- 🏠 API: `http://localhost:8787`
+- 📖 Docs: `http://localhost:8787/docs`
+- 🏥 Health: `http://localhost:8787/health`
 
-### 7. Deploy
+### 8. Deploy to Production
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy --env production
 ```
 
-Live at: `https://backend-mondrips.workers.dev`
+**Live at:** `https://backend-mondrips-production.mondrips-api.workers.dev`
 
 ---
 
@@ -221,71 +254,247 @@ name = "backend-mondrips"
 main = "src/index.ts"
 compatibility_date = "2025-02-18"
 
+# D1 Database
 [[d1_databases]]
 binding = "DB"
 database_name = "db_mondrips"
-database_id = "your-database-id"
+database_id = "your-database-id-here"
 
-[[r2_buckets]]
-binding = "UPLOADS"
-bucket_name = "mondrips-uploads"
+# R2 Storage (Optional)
+# [[r2_buckets]]
+# binding = "UPLOADS"
+# bucket_name = "mondrips-uploads"
 
+# Environment Variables
 [vars]
 JWT_EXPIRES_IN = "15m"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "production"
 CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
+
+# Production Environment
+[env.production]
+name = "backend-mondrips-production"
+compatibility_date = "2025-02-18"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "db_mondrips"
+database_id = "your-database-id-here"
+
+[env.production.vars]
+JWT_EXPIRES_IN = "15m"
+REMEMBER_TOKEN_EXPIRES_IN = "30d"
+NODE_ENV = "production"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
+
+# Staging Environment
+[env.staging]
+name = "backend-mondrips-staging"
+compatibility_date = "2025-02-18"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "db_mondrips"
+database_id = "your-database-id-here"
+
+[env.staging.vars]
+JWT_EXPIRES_IN = "15m"
+REMEMBER_TOKEN_EXPIRES_IN = "30d"
+NODE_ENV = "staging"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
 ```
 
-### Secrets (via CLI)
+### Secrets Management
 
 ```bash
+# Set a secret
 npx wrangler secret put JWT_SECRET
+
+# List all secrets
+npx wrangler secret list
+
+# Delete a secret
+npx wrangler secret delete SECRET_NAME
 ```
 
 ---
 
 ## 📚 API Documentation
 
-### Interactive Docs
+### Interactive Swagger UI
 
-Access Swagger UI at:
-- **Local**: `http://localhost:8787/docs`
-- **Production**: `https://backend-mondrips.workers.dev/docs`
+| Environment | URL |
+|-------------|-----|
+| **Production** | https://backend-mondrips-production.mondrips-api.workers.dev/docs |
+| **Staging** | https://backend-mondrips-staging.mondrips-api.workers.dev/docs |
+| **Local** | http://localhost:8787/docs |
 
-### Endpoints Overview
+### OpenAPI Specification
 
-#### Authentication
+```bash
+curl https://backend-mondrips-production.mondrips-api.workers.dev/openapi.json
+```
 
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| POST | `/api/auth/register` | No |
-| POST | `/api/auth/login` | No |
-| POST | `/api/auth/refresh` | Cookie |
-| POST | `/api/auth/logout` | Bearer |
-| PUT | `/api/auth/change-password` | Bearer |
-| GET | `/api/auth/me` | Bearer |
+---
 
-#### Social Media
+## 📡 API Endpoints
 
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| GET | `/api/sosial-media` | Bearer |
-| POST | `/api/sosial-media` | Bearer |
-| PUT | `/api/sosial-media/:id` | Bearer |
-| DELETE | `/api/sosial-media/:id` | Bearer |
+### 🔐 Authentication (6 endpoints)
 
-#### Collaboration Sliders
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| POST | `/api/auth/register` | ❌ | Register new user |
+| POST | `/api/auth/login` | ❌ | Login user |
+| POST | `/api/auth/refresh` | ❌ (Cookie) | Refresh access token |
+| POST | `/api/auth/logout` | ✅ | Logout user |
+| PUT | `/api/auth/change-password` | ✅ | Change password |
+| GET | `/api/auth/me` | ✅ | Get current user |
 
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| GET | `/api/collaboration-sliders/public` | No |
-| GET | `/api/collaboration-sliders` | Bearer |
-| POST | `/api/collaboration-sliders` | Bearer (multipart) |
-| PUT | `/api/collaboration-sliders/:id` | Bearer (multipart) |
-| DELETE | `/api/collaboration-sliders/:id` | Bearer |
-| PATCH | `/api/collaboration-sliders/:id/order` | Bearer |
-| PATCH | `/api/collaboration-sliders/:id/status` | Bearer |
+### 📱 Social Media (5 endpoints)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/api/sosial-media` | ✅ | List user's social media |
+| POST | `/api/sosial-media` | ✅ | Create social media |
+| GET | `/api/sosial-media/:id` | ✅ | Get by ID |
+| PUT | `/api/sosial-media/:id` | ✅ | Update social media |
+| DELETE | `/api/sosial-media/:id` | ✅ | Delete social media |
+
+### 🎨 Collaboration Sliders (8 endpoints)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/api/collaboration-sliders/public` | ❌ | List active sliders |
+| GET | `/api/collaboration-sliders` | ✅ | List user's sliders |
+| POST | `/api/collaboration-sliders` | ✅ | Create slider |
+| GET | `/api/collaboration-sliders/:id` | ✅ | Get by ID |
+| PUT | `/api/collaboration-sliders/:id` | ✅ | Update slider |
+| DELETE | `/api/collaboration-sliders/:id` | ✅ | Delete slider |
+| PATCH | `/api/collaboration-sliders/:id/order` | ✅ | Update display order |
+| PATCH | `/api/collaboration-sliders/:id/status` | ✅ | Toggle status |
+
+---
+
+## 📝 Request/Response Examples
+
+### Register User
+
+```bash
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "username": "johndoe",
+    "password": "securepass123",
+    "full_name": "John Doe"
+  }'
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "id_user": 1,
+    "email": "user@example.com",
+    "username": "johndoe",
+    "full_name": "John Doe",
+    "role": "user",
+    "is_active": 1,
+    "created_at": "2026-02-20 16:15:35",
+    "updated_at": "2026-02-20 16:15:35",
+    "last_login": null
+  }
+}
+```
+
+### Login
+
+```bash
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "identifier": "user@example.com",
+    "password": "securepass123",
+    "remember_me": true
+  }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id_user": 1,
+      "email": "user@example.com",
+      "username": "johndoe",
+      "full_name": "John Doe",
+      "role": "user"
+    },
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "Bearer",
+    "expires_in": "15m"
+  }
+}
+```
+
+**Set-Cookie Header:**
+```
+Set-Cookie: remember_token=abc123...; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Strict
+```
+
+### Refresh Token
+
+```bash
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/auth/refresh \
+  -b cookies.txt
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "access_token": "new_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "Bearer",
+    "expires_in": "15m"
+  }
+}
+```
+
+### Create Social Media
+
+```bash
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/sosial-media \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "nama_platform": "Instagram",
+    "username_path": "@johndoe",
+    "link_url": "https://instagram.com/johndoe"
+  }'
+```
+
+### Create Collaboration Slider
+
+```bash
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/collaboration-sliders \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "title": "Partner Banner",
+    "image_path": "https://example.com/images/banner.jpg",
+    "description": "Our collaboration partner",
+    "link_url": "https://partner.com",
+    "display_order": 1,
+    "is_active": 1
+  }'
+```
 
 ---
 
@@ -293,28 +502,48 @@ Access Swagger UI at:
 
 ### Password Hashing
 
+Uses **Web Crypto API** with SHA-256:
+
 ```typescript
-// Uses Web Crypto API SHA-256
-const hash = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  // Convert to hex string...
+};
 ```
 
 ### JWT Implementation
 
+Uses **Web Crypto API** with HMAC-SHA256:
+
 ```typescript
-// HS256 with Web Crypto API
-const signature = await crypto.subtle.sign('HMAC', key, data);
+// Token generation
+const key = await crypto.subtle.importKey(
+  'raw',
+  encoder.encode(secret),
+  { name: 'HMAC', hash: 'SHA-256' },
+  false,
+  ['sign']
+);
+const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
 ```
 
-### File Upload Security
+### Token Expiry
 
-- **Type Validation**: Only JPG, JPEG, PNG, WEBP
-- **Size Limit**: Max 2MB
-- **Unique Names**: Timestamp + random string
-- **R2 Storage**: No filesystem access
+| Token Type | Expiry | Storage |
+|------------|--------|---------|
+| **Access Token** | 15 minutes | Client (Bearer header) |
+| **Remember Token** | 30 days | HTTPOnly Cookie |
 
-### CORS
+### Security Best Practices
 
-Configurable origins via `CORS_ORIGINS` environment variable.
+- ✅ Parameterized SQL queries (SQL injection prevention)
+- ✅ Zod validation for all inputs
+- ✅ HTTPOnly cookies for remember tokens
+- ✅ Secure & SameSite cookie attributes
+- ✅ CORS configuration
+- ✅ User ownership validation
 
 ---
 
@@ -323,41 +552,55 @@ Configurable origins via `CORS_ORIGINS` environment variable.
 ### Deploy Commands
 
 ```bash
-# Production
-npx wrangler deploy
+# Deploy to production
+npx wrangler deploy --env production
 
-# Staging
+# Deploy to staging
 npx wrangler deploy --env staging
 
 # Dry run (test build)
-npx wrangler deploy --dry-run
+npx wrangler deploy --dry-run --env production
 ```
 
-### Environment-Specific Deployments
+### Environment URLs
+
+| Environment | URL |
+|-------------|-----|
+| **Production** | https://backend-mondrips-production.mondrips-api.workers.dev |
+| **Staging** | https://backend-mondrips-staging.mondrips-api.workers.dev |
+| **Local** | http://localhost:8787 |
+
+### Monitoring & Logs
 
 ```bash
-# Production
-npx wrangler deploy --env production
-
-# Staging
-npx wrangler deploy --env staging
-```
-
-### Monitoring
-
-```bash
-# Real-time logs
+# Real-time logs (all environments)
 npx wrangler tail
 
 # Production logs only
 npx wrangler tail --env production
+
+# Filter by status
+npx wrangler tail --status error
+```
+
+### Database Management
+
+```bash
+# Database info
+npx wrangler d1 info db_mondrips
+
+# Execute migration
+npx wrangler d1 execute db_mondrips --remote --file=migrations/001.sql
+
+# List databases
+npx wrangler d1 list
 ```
 
 ---
 
 ## 🗄 Database Schema
 
-### Users
+### Users Table
 
 ```sql
 CREATE TABLE users (
@@ -366,16 +609,20 @@ CREATE TABLE users (
   username TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  role TEXT DEFAULT 'user',
-  is_active INTEGER DEFAULT 1,
+  role TEXT NOT NULL DEFAULT 'user',
+  is_active INTEGER NOT NULL DEFAULT 1,
   remember_token TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login DATETIME
 );
+
+CREATE INDEX idx_email ON users(email);
+CREATE INDEX idx_username ON users(username);
+CREATE INDEX idx_remember_token ON users(remember_token);
 ```
 
-### Sosial Media
+### Sosial Media Table
 
 ```sql
 CREATE TABLE sosial_media (
@@ -389,9 +636,11 @@ CREATE TABLE sosial_media (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_id_user_sosmed ON sosial_media(id_user);
 ```
 
-### Collaboration Sliders
+### Collaboration Sliders Table
 
 ```sql
 CREATE TABLE collaboration_sliders (
@@ -407,7 +656,39 @@ CREATE TABLE collaboration_sliders (
   id_user INTEGER NOT NULL,
   FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_id_user_sliders ON collaboration_sliders(id_user);
+CREATE INDEX idx_display_order ON collaboration_sliders(display_order);
+CREATE INDEX idx_is_active ON collaboration_sliders(is_active);
 ```
+
+---
+
+## 🧪 Testing
+
+### Manual Testing with cURL
+
+```bash
+# Health check
+curl https://backend-mondrips-production.mondrips-api.workers.dev/health
+
+# Register
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","username":"testuser","password":"test12345","full_name":"Test User"}'
+
+# Login
+curl -X POST https://backend-mondrips-production.mondrips-api.workers.dev/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"test@test.com","password":"test12345"}'
+```
+
+### Testing with Swagger UI
+
+1. Open Swagger UI at your environment URL
+2. Click **Authorize** button
+3. Enter Bearer token: `YOUR_ACCESS_TOKEN`
+4. Use **Try it out** for any endpoint
 
 ---
 
@@ -415,28 +696,60 @@ CREATE TABLE collaboration_sliders (
 
 ### Common Issues
 
-| Error | Solution |
-|-------|----------|
-| Database not found | Check `database_id` in wrangler.toml |
-| Bucket not found | Run `npx wrangler r2 bucket create mondrips-uploads` |
-| Invalid JWT_SECRET | Run `npx wrangler secret put JWT_SECRET` |
-| Module not found | Run `bun install` or `npm install` |
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `Database not found` | Invalid `database_id` | Check `wrangler.toml` and run `npx wrangler d1 info` |
+| `no such table: users` | Schema not executed | Run `npx wrangler d1 execute db_mondrips --remote --file=schema.sql` |
+| `Invalid or expired token` | Token expired | Use `/api/auth/refresh` endpoint |
+| `JWT_SECRET not set` | Missing secret | Run `npx wrangler secret put JWT_SECRET` |
+| `Module not found` | Dependencies missing | Run `bun install` or `npm install` |
+| `this.db.first is not a function` | Wrong DB wrapper usage | Ensure using D1Database directly |
+
+### Debug Commands
+
+```bash
+# Check deployment status
+npx wrangler deploy --dry-run --env production
+
+# Check database
+npx wrangler d1 info db_mondrips
+
+# Check secrets
+npx wrangler secret list
+
+# View logs
+npx wrangler tail --env production
+```
 
 ---
 
 ## 📚 Resources
 
-- [Wrangler Docs](https://developers.cloudflare.com/workers/wrangler/)
-- [D1 Database](https://developers.cloudflare.com/d1/)
-- [R2 Storage](https://developers.cloudflare.com/r2/)
-- [Hono Docs](https://hono.dev/)
+### Official Documentation
+
+- [Wrangler CLI Docs](https://developers.cloudflare.com/workers/wrangler/)
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
+- [D1 Database Docs](https://developers.cloudflare.com/d1/)
+- [Hono Framework Docs](https://hono.dev/)
+- [Zod Validation Docs](https://zod.dev/)
+
+### Community & Support
+
+- [Cloudflare Discord](https://discord.gg/cloudflaredev)
+- [Hono GitHub Discussions](https://github.com/honojs/hono/discussions)
 
 ---
 
 ## 📝 License
 
-Proprietary software. All rights reserved.
+**Proprietary Software** - All rights reserved.
 
 ---
 
-**Built with ❤️ on Cloudflare Workers**
+## 👨‍💻 Contributors
+
+Built with ❤️ using **Hono Framework** and **Cloudflare Workers**
+
+---
+
+**Last Updated:** February 20, 2026

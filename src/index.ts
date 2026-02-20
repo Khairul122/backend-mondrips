@@ -26,13 +26,40 @@ app.use('*', async (c, next) => {
 });
 
 app.use('/api/auth/*', (c, next) => {
+  // Validate DB binding exists
+  if (!c.env.DB) {
+    console.error('❌ D1 Database binding is undefined! Check wrangler.toml and deployment.');
+    throw new Error('Database binding not configured. Please check wrangler.toml and ensure D1 database is properly bound.');
+  }
+  // Pass D1Database directly to UserRepository (no wrapper)
   c.set('userRepository', new UserRepository(c.env.DB));
+  return next();
+});
+
+// Validate DB and R2 bindings for other routes
+app.use('/api/sosial-media/*', (c, next) => {
+  if (!c.env.DB) {
+    console.error('❌ D1 Database binding is undefined!');
+    throw new Error('Database binding not configured.');
+  }
+  return next();
+});
+
+app.use('/api/collaboration-sliders/*', (c, next) => {
+  if (!c.env.DB) {
+    console.error('❌ D1 Database binding is undefined!');
+    throw new Error('Database binding not configured.');
+  }
+  // R2 validation skipped - temporarily disabled
   return next();
 });
 
 app.route('/api/auth', authRoutes);
 app.route('/api/sosial-media', sosialMediaRoutes);
 app.route('/api/collaboration-sliders', collaborationSliderRoutes);
+
+// Alternative short routes (without /api/auth prefix)
+app.route('/auth', authRoutes);
 
 app.route('/', swaggerDocs);
 
@@ -65,11 +92,25 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
-  console.error(err);
+  console.error('❌ Error:', err);
+  console.error('Stack:', err.stack);
+  
+  // Check for specific binding errors
+  if (err.message.includes('Database binding')) {
+    return c.json(
+      {
+        success: false,
+        message: 'Database configuration error. Please contact administrator.',
+        error: 'D1 Database binding not configured',
+      },
+      500
+    );
+  }
+  
   return c.json(
     {
       success: false,
-      message: 'Internal server error',
+      message: err.message || 'Internal server error',
     },
     500
   );

@@ -1,5 +1,6 @@
 import { D1Database } from '@cloudflare/workers-types';
 
+// Direct D1Database wrapper with simplified methods
 export class Database {
   private db: D1Database;
 
@@ -8,25 +9,48 @@ export class Database {
   }
 
   async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const stmt = this.db.prepare(sql).bind(...params);
-    const result = await stmt.all();
-    return result.results as T[];
+    try {
+      const stmt = this.db.prepare(sql).bind(...params);
+      const result = await stmt.all();
+      return (result as any).results as T[] || [];
+    } catch (error) {
+      console.error('Database query error:', error);
+      throw error;
+    }
   }
 
   async first<T>(sql: string, params: unknown[] = []): Promise<T | null> {
-    const stmt = this.db.prepare(sql).bind(...params);
-    const result = await stmt.first();
-    return result as T | null;
+    try {
+      console.log('Database.first() called with SQL:', sql);
+      const stmt = this.db.prepare(sql).bind(...params);
+      console.log('Statement prepared, calling first()...');
+      const result = await stmt.first();
+      console.log('Result from first():', result);
+      return result as T | null;
+    } catch (error) {
+      console.error('Database.first() error:', error);
+      throw error;
+    }
   }
 
-  async execute(sql: string, params: unknown[] = []): Promise<D1Result> {
-    const stmt = this.db.prepare(sql).bind(...params);
-    return await stmt.run();
+  async execute(sql: string, params: unknown[] = []): Promise<any> {
+    try {
+      const stmt = this.db.prepare(sql).bind(...params);
+      return await stmt.run();
+    } catch (error) {
+      console.error('Database execute error:', error);
+      throw error;
+    }
   }
 
   async insert(sql: string, params: unknown[] = []): Promise<number> {
-    const result = await this.execute(sql, params);
-    return result.meta?.last_row_id || 0;
+    try {
+      const result = await this.execute(sql, params);
+      return (result as any).meta?.last_row_id || 0;
+    } catch (error) {
+      console.error('Database insert error:', error);
+      throw error;
+    }
   }
 }
 

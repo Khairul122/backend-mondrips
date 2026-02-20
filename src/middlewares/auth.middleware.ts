@@ -25,10 +25,13 @@ export const authMiddleware: MiddlewareHandler<AppEnv> = async (c: Context<AppEn
       c.env.JWT_EXPIRES_IN,
       c.env.REMEMBER_TOKEN_EXPIRES_IN
     );
-    const payload = authService.verifyToken(token);
+    const payload = await authService.verifyToken(token);
+    console.log('Auth middleware - payload:', payload);
     c.set('user', payload);
+    console.log('Auth middleware - user set:', c.get('user'));
     await next();
   } catch (error) {
+    console.error('Auth middleware - error:', error);
     return c.json(
       {
         success: false,

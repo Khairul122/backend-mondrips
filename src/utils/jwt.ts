@@ -82,12 +82,14 @@ const verifyJWT = async (token: string, secret: string): Promise<JWTPayload> => 
   return payload;
 };
 
-export const generateAccessToken = (payload: Omit<JWTPayload, 'exp' | 'iat'>, secret: string, expiresIn: string): string => {
+export const generateAccessToken = async (payload: Omit<JWTPayload, 'exp' | 'iat'>, secret: string, expiresIn: string): Promise<string> => {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const exp = parseExpiration(expiresIn);
-
-  return signJWT(header, { ...payload, iat: now, exp: now + exp }, secret);
+  
+  const token = await signJWT(header, { ...payload, iat: now, exp: now + exp }, secret);
+  
+  return token;
 };
 
 const parseExpiration = (expiresIn: string): number => {
@@ -106,4 +108,4 @@ const parseExpiration = (expiresIn: string): number => {
   }
 };
 
-export { signJWT as jwtSign, verifyJWT as jwtVerify };
+export { signJWT as jwtSign, verifyJWT };

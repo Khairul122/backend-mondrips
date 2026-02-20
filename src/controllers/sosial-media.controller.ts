@@ -2,7 +2,6 @@ import { Context } from 'hono';
 import { SosialMediaService } from '../services/sosial-media.service';
 import { z } from 'zod';
 import { AppEnv } from '../types';
-import Database from '../config/database';
 
 const createSosialMediaSchema = z.object({
   nama_platform: z.string().min(1).max(50),

@@ -1,7 +1,6 @@
 import { CollaborationSliderRepository } from '../repositories/collaboration-slider.repository';
 import { CollaborationSliderResponse } from '../models/collaboration-slider.model';
-import Database from '../config/database';
-import { R2Bucket } from '@cloudflare/workers-types';
+import { D1Database } from '@cloudflare/workers-types';
 import { deleteFile } from '../utils/file-upload';
 
 export interface CreateCollaborationSliderInput {
@@ -24,9 +23,9 @@ export interface UpdateCollaborationSliderInput {
 
 export class CollaborationSliderService {
   private collaborationSliderRepository: CollaborationSliderRepository;
-  private bucket: R2Bucket;
+  private bucket?: R2Bucket; // Optional - temporarily disabled
 
-  constructor(db: Database, bucket: R2Bucket) {
+  constructor(db: D1Database, bucket?: R2Bucket) {
     this.collaborationSliderRepository = new CollaborationSliderRepository(db);
     this.bucket = bucket;
   }
@@ -36,9 +35,9 @@ export class CollaborationSliderService {
       id_user: userId,
       title: input.title,
       image_path: input.image_path,
-      description: input.description || null,
-      link_url: input.link_url || null,
-      display_order: input.display_order || 0,
+      description: input.description !== undefined ? input.description : null,
+      link_url: input.link_url !== undefined ? input.link_url : null,
+      display_order: input.display_order !== undefined ? input.display_order : 0,
       is_active: input.is_active !== undefined ? input.is_active : 1,
     };
 
@@ -92,9 +91,10 @@ export class CollaborationSliderService {
       throw new Error('Collaboration slider not found');
     }
 
-    if (input.image_path && oldImagePath) {
-      await deleteFile(this.bucket, oldImagePath);
-    }
+    // Skip file deletion - R2 temporarily disabled
+    // if (input.image_path && oldImagePath && this.bucket) {
+    //   await deleteFile(this.bucket, oldImagePath);
+    // }
 
     await this.collaborationSliderRepository.update(id, input);
 
@@ -112,10 +112,11 @@ export class CollaborationSliderService {
       throw new Error('Collaboration slider not found');
     }
 
-    const slider = await this.collaborationSliderRepository.findById(id);
-    if (slider && slider.image_path) {
-      await deleteFile(this.bucket, slider.image_path);
-    }
+    // Skip file deletion - R2 temporarily disabled
+    // const slider = await this.collaborationSliderRepository.findById(id);
+    // if (slider && slider.image_path && this.bucket) {
+    //   await deleteFile(this.bucket, slider.image_path);
+    // }
 
     await this.collaborationSliderRepository.delete(id);
   }
