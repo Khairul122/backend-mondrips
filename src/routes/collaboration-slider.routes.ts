@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { CollaborationSliderController } from '../controllers/collaboration-slider.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
+import { AppEnv } from '../types';
 
 const collaborationSliderController = new CollaborationSliderController();
 
-export const collaborationSliderRoutes = new Hono();
+export const collaborationSliderRoutes = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variables'] }>();
 
 collaborationSliderRoutes.get('/public', (c) => collaborationSliderController.indexPublic(c));
 

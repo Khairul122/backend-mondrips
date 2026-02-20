@@ -1,28 +1,33 @@
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
+import { D1Database } from '@cloudflare/workers-types';
 
-dotenv.config();
+export class Database {
+  private db: D1Database;
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'db_mondrips',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
-});
+  constructor(db: D1Database) {
+    this.db = db;
+  }
 
-export const query = async (sql: string, params?: unknown[]) => {
-  const [rows] = await pool.execute(sql, params);
-  return rows;
-};
+  async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const stmt = this.db.prepare(sql).bind(...params);
+    const result = await stmt.all();
+    return result.results as T[];
+  }
 
-export const getConnection = async () => {
-  return await pool.getConnection();
-};
+  async first<T>(sql: string, params: unknown[] = []): Promise<T | null> {
+    const stmt = this.db.prepare(sql).bind(...params);
+    const result = await stmt.first();
+    return result as T | null;
+  }
 
-export default pool;
+  async execute(sql: string, params: unknown[] = []): Promise<D1Result> {
+    const stmt = this.db.prepare(sql).bind(...params);
+    return await stmt.run();
+  }
+
+  async insert(sql: string, params: unknown[] = []): Promise<number> {
+    const result = await this.execute(sql, params);
+    return result.meta?.last_row_id || 0;
+  }
+}
+
+export default Database;

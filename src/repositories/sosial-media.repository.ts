@@ -1,27 +1,33 @@
-import { query } from '../config/database';
+import Database from '../config/database';
 import { SosialMedia, CreateSosialMediaDTO, UpdateSosialMediaDTO } from '../models/sosial-media.model';
 
 export class SosialMediaRepository {
+  private db: Database;
+
+  constructor(db: Database) {
+    this.db = db;
+  }
+
   async findById(id: number): Promise<SosialMedia | null> {
-    const rows = await query(
+    const row = await this.db.first<SosialMedia>(
       'SELECT * FROM sosial_media WHERE id = ? LIMIT 1',
       [id]
-    ) as SosialMedia[];
-    return rows[0] || null;
+    );
+    return row || null;
   }
 
   async findByUserId(userId: number): Promise<SosialMedia[]> {
-    const rows = await query(
+    const rows = await this.db.query<SosialMedia>(
       'SELECT * FROM sosial_media WHERE id_user = ? ORDER BY created_at DESC',
       [userId]
-    ) as SosialMedia[];
+    );
     return rows;
   }
 
   async create(data: CreateSosialMediaDTO): Promise<number> {
-    const result = await query(
+    const id = await this.db.insert(
       `INSERT INTO sosial_media (id_user, nama_platform, username_path, icon_class, link_url, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         data.id_user,
         data.nama_platform,
@@ -29,8 +35,8 @@ export class SosialMediaRepository {
         data.icon_class || null,
         data.link_url,
       ]
-    ) as { insertId: number };
-    return result.insertId;
+    );
+    return id;
   }
 
   async update(id: number, data: UpdateSosialMediaDTO): Promise<boolean> {
@@ -58,10 +64,10 @@ export class SosialMediaRepository {
       return false;
     }
 
-    fields.push('updated_at = NOW()');
+    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await query(
+    await this.db.execute(
       `UPDATE sosial_media SET ${fields.join(', ')} WHERE id = ?`,
       values
     );
@@ -70,26 +76,23 @@ export class SosialMediaRepository {
   }
 
   async delete(id: number): Promise<boolean> {
-    const result = await query(
-      'DELETE FROM sosial_media WHERE id = ?',
-      [id]
-    ) as { affectedRows: number };
-    return result.affectedRows > 0;
+    const result = await this.db.execute('DELETE FROM sosial_media WHERE id = ?', [id]);
+    return (result.meta?.changes || 0) > 0;
   }
 
   async exists(id: number): Promise<boolean> {
-    const rows = await query(
+    const result = await this.db.first<{ count: number }>(
       'SELECT COUNT(*) as count FROM sosial_media WHERE id = ?',
       [id]
-    ) as { count: number }[];
-    return rows[0].count > 0;
+    );
+    return result ? result.count > 0 : false;
   }
 
   async existsForUser(id: number, userId: number): Promise<boolean> {
-    const rows = await query(
+    const result = await this.db.first<{ count: number }>(
       'SELECT COUNT(*) as count FROM sosial_media WHERE id = ? AND id_user = ?',
       [id, userId]
-    ) as { count: number }[];
-    return rows[0].count > 0;
+    );
+    return result ? result.count > 0 : false;
   }
 }

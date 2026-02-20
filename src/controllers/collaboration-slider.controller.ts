@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { CollaborationSliderService } from '../services/collaboration-slider.service';
 import { z } from 'zod';
+import { AppEnv } from '../types';
 import {
   UploadedFile,
   validateFile,
@@ -26,13 +27,9 @@ const updateSliderSchema = z.object({
 });
 
 export class CollaborationSliderController {
-  private collaborationSliderService: CollaborationSliderService;
+  constructor() {}
 
-  constructor() {
-    this.collaborationSliderService = new CollaborationSliderService();
-  }
-
-  async index(c: Context) {
+  async index(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -48,7 +45,8 @@ export class CollaborationSliderController {
       const orderByParam = c.req.query('order') || 'ASC';
       const orderBy = orderByParam.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-      const sliderList = await this.collaborationSliderService.findAllByUserId(user.id_user, orderBy);
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const sliderList = await service.findAllByUserId(user.id_user, orderBy);
 
       return c.json({
         success: true,
@@ -75,12 +73,13 @@ export class CollaborationSliderController {
     }
   }
 
-  async indexPublic(c: Context) {
+  async indexPublic(c: Context<AppEnv>) {
     try {
       const orderByParam = c.req.query('order') || 'ASC';
       const orderBy = orderByParam.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-      const sliderList = await this.collaborationSliderService.findActiveAll(orderBy);
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const sliderList = await service.findActiveAll(orderBy);
 
       return c.json({
         success: true,
@@ -107,7 +106,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async show(c: Context) {
+  async show(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -131,7 +130,8 @@ export class CollaborationSliderController {
         );
       }
 
-      const slider = await this.collaborationSliderService.findById(id, user.id_user);
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const slider = await service.findById(id, user.id_user);
 
       return c.json({
         success: true,
@@ -158,7 +158,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async store(c: Context) {
+  async store(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -200,19 +200,22 @@ export class CollaborationSliderController {
       }
 
       const arrayBuffer = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const mimeType = imageFile.type;
+      const size = imageFile.size;
+      const originalName = imageFile.name;
 
       const uploadedFile: UploadedFile = {
-        buffer,
-        mimeType: imageFile.type,
-        originalName: imageFile.name,
-        size: imageFile.size,
+        arrayBuffer,
+        mimeType,
+        originalName,
+        size,
       };
 
       validateFile(uploadedFile);
 
-      const uniqueFilename = generateUniqueFilename(imageFile.name);
-      const imagePath = saveFile(buffer, uniqueFilename);
+      const uniqueFilename = generateUniqueFilename(originalName);
+      await saveFile(c.env.UPLOADS, arrayBuffer, uniqueFilename);
+      const imagePath = uniqueFilename;
 
       const validatedData = createSliderSchema.parse({
         title,
@@ -222,7 +225,8 @@ export class CollaborationSliderController {
         is_active: isActive !== undefined ? parseInt(isActive) : 1,
       });
 
-      const slider = await this.collaborationSliderService.create(user.id_user, {
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const slider = await service.create(user.id_user, {
         title: validatedData.title,
         image_path: imagePath,
         description: validatedData.description,
@@ -281,7 +285,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async update(c: Context) {
+  async update(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -313,27 +317,31 @@ export class CollaborationSliderController {
       const displayOrder = formData.display_order as string | undefined;
       const isActive = formData.is_active as string | undefined;
 
-      const oldSlider = await this.collaborationSliderService.findById(id, user.id_user);
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const oldSlider = await service.findById(id, user.id_user);
       let imagePath: string | undefined;
 
       if (imageFile && imageFile instanceof File) {
         const arrayBuffer = await imageFile.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = imageFile.type;
+        const size = imageFile.size;
+        const originalName = imageFile.name;
 
         const uploadedFile: UploadedFile = {
-          buffer,
-          mimeType: imageFile.type,
-          originalName: imageFile.name,
-          size: imageFile.size,
+          arrayBuffer,
+          mimeType,
+          originalName,
+          size,
         };
 
         validateFile(uploadedFile);
 
-        const uniqueFilename = generateUniqueFilename(imageFile.name);
-        imagePath = saveFile(buffer, uniqueFilename);
+        const uniqueFilename = generateUniqueFilename(originalName);
+        await saveFile(c.env.UPLOADS, arrayBuffer, uniqueFilename);
+        imagePath = uniqueFilename;
 
         if (oldSlider.image_path) {
-          deleteFile(oldSlider.image_path);
+          await deleteFile(c.env.UPLOADS, oldSlider.image_path);
         }
       }
 
@@ -345,7 +353,7 @@ export class CollaborationSliderController {
         is_active: isActive !== undefined ? parseInt(isActive) : undefined,
       });
 
-      const slider = await this.collaborationSliderService.update(
+      const slider = await service.update(
         id,
         user.id_user,
         {
@@ -406,7 +414,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async destroy(c: Context) {
+  async destroy(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -430,7 +438,8 @@ export class CollaborationSliderController {
         );
       }
 
-      await this.collaborationSliderService.delete(id, user.id_user);
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      await service.delete(id, user.id_user);
 
       return c.json({
         success: true,
@@ -457,7 +466,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async updateOrder(c: Context) {
+  async updateOrder(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -494,7 +503,8 @@ export class CollaborationSliderController {
         );
       }
 
-      const slider = await this.collaborationSliderService.update(
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const slider = await service.update(
         id,
         user.id_user,
         { display_order: displayOrder },
@@ -527,7 +537,7 @@ export class CollaborationSliderController {
     }
   }
 
-  async updateStatus(c: Context) {
+  async updateStatus(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -564,7 +574,8 @@ export class CollaborationSliderController {
         );
       }
 
-      const slider = await this.collaborationSliderService.update(
+      const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
+      const slider = await service.update(
         id,
         user.id_user,
         { is_active: isActive },

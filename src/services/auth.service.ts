@@ -1,8 +1,7 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { UserRepository } from '../repositories/user.repository';
 import { UserResponse } from '../models/user.model';
+import { hashPassword, verifyPassword, generateRandomToken, hashToken } from '../utils/crypto';
+import { generateAccessToken, verifyJWT, JWTPayload } from '../utils/jwt';
 
 export interface RegisterInput {
   email: string;
@@ -34,14 +33,12 @@ export class AuthService {
   private jwtSecret: string;
   private jwtExpiresIn: string;
   private rememberTokenExpiresIn: string;
-  private saltRounds: number;
 
-  constructor() {
-    this.userRepository = new UserRepository();
-    this.jwtSecret = process.env.JWT_SECRET || 'default-secret-key';
-    this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
-    this.rememberTokenExpiresIn = process.env.REMEMBER_TOKEN_EXPIRES_IN || '30d';
-    this.saltRounds = 12;
+  constructor(userRepository: UserRepository, jwtSecret: string, jwtExpiresIn: string, rememberTokenExpiresIn: string) {
+    this.userRepository = userRepository;
+    this.jwtSecret = jwtSecret;
+    this.jwtExpiresIn = jwtExpiresIn;
+    this.rememberTokenExpiresIn = rememberTokenExpiresIn;
   }
 
   async register(input: RegisterInput): Promise<UserResponse> {
@@ -55,7 +52,7 @@ export class AuthService {
       throw new Error('Username already taken');
     }
 
-    const hashedPassword = await bcrypt.hash(input.password, this.saltRounds);
+    const hashedPassword = await hashPassword(input.password);
 
     const userId = await this.userRepository.create({
       email: input.email,
@@ -84,20 +81,21 @@ export class AuthService {
       throw new Error('Account is deactivated');
     }
 
-    const passwordValid = await bcrypt.compare(input.password, user.password);
+    const passwordValid = await verifyPassword(input.password, user.password);
     if (!passwordValid) {
       throw new Error('Invalid credentials');
     }
 
+    const lastLogin = new Date().toISOString().replace('T', ' ').substring(0, 19);
     await this.userRepository.update(user.id_user, {
-      last_login: new Date(),
+      last_login: lastLogin as unknown as Date,
     });
 
     const tokens = await this.generateTokens(user);
 
     if (input.rememberMe) {
-      const rememberToken = crypto.randomBytes(32).toString('hex');
-      const hashedToken = await bcrypt.hash(rememberToken, this.saltRounds);
+      const rememberToken = generateRandomToken();
+      const hashedToken = await hashToken(rememberToken);
 
       await this.userRepository.update(user.id_user, {
         remember_token: hashedToken,
@@ -113,26 +111,22 @@ export class AuthService {
   }
 
   async refreshAccessToken(rememberToken: string): Promise<{ accessToken: string }> {
-    const users = await this.userRepository.findByRememberToken(rememberToken) as any;
-    
-    if (!users || !users.remember_token) {
+    const hashedToken = await hashToken(rememberToken);
+    const user = await this.userRepository.findByRememberToken(hashedToken);
+
+    if (!user) {
       throw new Error('Invalid remember token');
     }
 
-    const tokenValid = await bcrypt.compare(rememberToken, users.remember_token);
-    if (!tokenValid) {
-      throw new Error('Invalid remember token');
-    }
-
-    if (!users.is_active) {
+    if (!user.is_active) {
       throw new Error('Account is deactivated');
     }
 
     const accessToken = this.generateAccessToken({
-      id_user: users.id_user,
-      email: users.email,
-      username: users.username,
-      role: users.role,
+      id_user: user.id_user,
+      email: user.email,
+      username: user.username,
+      role: user.role,
     });
 
     return { accessToken };
@@ -150,30 +144,23 @@ export class AuthService {
       throw new Error('User not found');
     }
 
-    const passwordValid = await bcrypt.compare(currentPassword, user.password);
+    const passwordValid = await verifyPassword(currentPassword, user.password);
     if (!passwordValid) {
       throw new Error('Current password is incorrect');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, this.saltRounds);
+    const hashedPassword = await hashPassword(newPassword);
     await this.userRepository.update(userId, {
       password: hashedPassword,
     });
   }
 
-  private generateAccessToken(payload: TokenPayload): string {
-    return jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.jwtExpiresIn,
-    });
-  }
-
-  private generateRefreshToken(): string {
-    const expiresIn = this.rememberTokenExpiresIn;
-    return crypto.randomBytes(32).toString('hex');
+  private generateAccessToken(payload: Omit<TokenPayload, 'exp' | 'iat'>): string {
+    return generateAccessToken(payload, this.jwtSecret, this.jwtExpiresIn);
   }
 
   private async generateTokens(user: any): Promise<AuthTokens> {
-    const payload: TokenPayload = {
+    const payload: Omit<TokenPayload, 'exp' | 'iat'> = {
       id_user: user.id_user,
       email: user.email,
       username: user.username,
@@ -200,6 +187,12 @@ export class AuthService {
   }
 
   verifyToken(token: string): TokenPayload {
-    return jwt.verify(token, this.jwtSecret) as TokenPayload;
+    const payload = verifyJWT(token, this.jwtSecret);
+    return {
+      id_user: payload.id_user,
+      email: payload.email,
+      username: payload.username,
+      role: payload.role,
+    };
   }
 }

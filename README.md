@@ -1,19 +1,19 @@
-# Mondrips Backend API
+# Mondrips API - Cloudflare Workers
 
-A modern, secure, and scalable RESTful API backend built with **Hono Framework** (TypeScript) and **MySQL**. This project implements Clean Architecture principles with a clear separation of concerns between Controllers, Services, and Repositories.
+A modern, serverless RESTful API built with **Hono Framework** (TypeScript) and deployed on **Cloudflare Workers**. This project uses **Cloudflare D1** (SQLite) for database and **Cloudflare R2** for file storage.
 
 ## 📋 Table of Contents
 
 - [Tech Stack](#-tech-stack)
 - [Features](#-features)
+- [Architecture](#-architecture)
 - [Folder Structure](#-folder-structure)
 - [Prerequisites](#-prerequisites)
-- [Installation & Setup](#-installation--setup)
+- [Quick Start](#-quick-start)
 - [Configuration](#-configuration)
-- [Running the Server](#-running-the-server)
 - [API Documentation](#-api-documentation)
-- [Security & Code Standards](#-security--code-standards)
-- [Database Schema](#-database-schema)
+- [Security](#-security)
+- [Deployment](#-deployment)
 
 ---
 
@@ -21,49 +21,75 @@ A modern, secure, and scalable RESTful API backend built with **Hono Framework**
 
 | Technology | Purpose |
 |------------|---------|
-| **TypeScript** | Type-safe JavaScript superset |
-| **Hono** | Lightweight, fast web framework |
-| **Bun / Node.js** | JavaScript runtime |
-| **MySQL** | Relational database |
-| **mysql2** | MySQL client with Promise support |
-| **bcryptjs** | Password hashing |
-| **jsonwebtoken** | JWT-based authentication |
-| **Zod** | Runtime type validation |
-| **@hono/swagger-ui** | Interactive API documentation |
+| **TypeScript** | Type-safe development |
+| **Hono** | Ultra-lightweight web framework for Edge |
+| **Cloudflare Workers** | Serverless Edge runtime |
+| **Cloudflare D1** | SQLite database (serverless) |
+| **Cloudflare R2** | Object storage for file uploads |
+| **Web Crypto API** | Password hashing & JWT (native) |
+| **Zod** | Runtime validation |
+| **@hono/swagger-ui** | API documentation |
 
 ---
 
 ## ✨ Features
 
 ### Authentication Module
-- **User Registration** with email and username uniqueness validation
-- **Login** with JWT Access Token generation
-- **Remember Me** functionality with long-lived HTTPOnly cookies
-- **Token Refresh** endpoint for seamless session extension
-- **Logout** with token invalidation
-- **Password Change** with current password verification
-- **Profile Retrieval** for authenticated users
+- **User Registration** with email/username uniqueness
+- **Login** with JWT Access Token
+- **Remember Me** with HTTPOnly cookies
+- **Token Refresh** endpoint
+- **Logout** with session invalidation
+- **Password Change** with verification
+- **Profile Retrieval**
 
 ### Social Media Management
-- **Create** social media links tied to authenticated user
-- **Read** list of all social media accounts (filtered by user)
-- **Update** existing social media information
-- **Delete** social media entries
-- **Validation**: URL format validation, platform name length limits
+- Full CRUD for social media links
+- User-scoped data (One-to-Many relation)
+- URL format validation
+- Platform name length constraints
 
 ### Collaboration Sliders Management
-- **Create** sliders with image upload (JPG, JPEG, PNG, WEBP)
-- **Read** all sliders with ordering by `display_order`
-- **Read Public** endpoint for active sliders only (no auth required)
-- **Update** slider data with optional image replacement
-- **Delete** slider with automatic file cleanup
-- **Reorder** sliders via dedicated endpoint
-- **Toggle Status** (active/inactive) via dedicated endpoint
-- **File Management**:
-  - Automatic unique filename generation (timestamp + random string)
-  - File size validation (max 2MB)
-  - File type validation (images only)
-  - Automatic deletion of old files on update/delete
+- **Image Upload** to R2 Storage (JPG, JPEG, PNG, WEBP)
+- **Display Order** management
+- **Active/Inactive** toggle
+- **Public Endpoint** for active sliders
+- **Automatic File Cleanup** on delete/update
+- **File Validation** (type + size limit 2MB)
+
+---
+
+## 🏗 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Cloudflare Workers                        │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                   Hono Application                    │   │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────┐  │   │
+│  │  │   Routes   │→ │ Controllers│→ │    Services    │  │   │
+│  │  └────────────┘  └────────────┘  └────────────────┘  │   │
+│  │                                          ↓             │   │
+│  │  ┌─────────────────────────────────────────────────┐  │   │
+│  │  │              Repositories (D1 SQL)              │  │   │
+│  │  └─────────────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────┘   │
+│         ↓                      ↓                             │
+│  ┌─────────────┐        ┌─────────────┐                     │
+│  │  D1 (SQLite)│        │ R2 Storage  │                     │
+│  └─────────────┘        └─────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Differences from Node.js Version
+
+| Feature | Node.js Version | Workers Version |
+|---------|-----------------|-----------------|
+| Database | MySQL | Cloudflare D1 (SQLite) |
+| File Storage | Filesystem | Cloudflare R2 |
+| Password Hash | bcryptjs | Web Crypto API (SHA-256) |
+| JWT | jsonwebtoken | Custom Web Crypto implementation |
+| Runtime | Node.js | V8 Isolates (Edge) |
 
 ---
 
@@ -72,396 +98,345 @@ A modern, secure, and scalable RESTful API backend built with **Hono Framework**
 ```
 backend-mondrips/
 ├── src/
-│   ├── config/           # Database configuration and connection pool
+│   ├── config/           # D1 database wrapper
 │   │   └── database.ts
-│   ├── controllers/      # Request handlers, input validation, response formatting
+│   ├── controllers/      # Request handlers
 │   │   ├── auth.controller.ts
 │   │   ├── sosial-media.controller.ts
 │   │   └── collaboration-slider.controller.ts
-│   ├── services/         # Business logic, orchestration layer
+│   ├── services/         # Business logic
 │   │   ├── auth.service.ts
 │   │   ├── sosial-media.service.ts
 │   │   └── collaboration-slider.service.ts
-│   ├── repositories/     # Database queries, data access layer
+│   ├── repositories/     # D1 queries
 │   │   ├── user.repository.ts
 │   │   ├── sosial-media.repository.ts
 │   │   └── collaboration-slider.repository.ts
-│   ├── models/           # TypeScript interfaces and DTOs
+│   ├── models/           # TypeScript interfaces
 │   │   ├── user.model.ts
 │   │   ├── sosial-media.model.ts
 │   │   └── collaboration-slider.model.ts
-│   ├── middlewares/      # Custom middleware (auth, CORS, etc.)
+│   ├── middlewares/      # Auth & CORS
 │   │   ├── auth.middleware.ts
 │   │   └── cors.middleware.ts
-│   ├── routes/           # Route definitions and endpoint mapping
+│   ├── routes/           # Route definitions
 │   │   ├── auth.routes.ts
 │   │   ├── sosial-media.routes.ts
 │   │   └── collaboration-slider.routes.ts
-│   ├── docs/             # OpenAPI/Swagger documentation
+│   ├── docs/             # Swagger/OpenAPI
 │   │   └── swagger.ts
-│   ├── utils/            # Utility functions (file upload, helpers)
-│   │   └── file-upload.ts
-│   └── index.ts          # Application entry point
-├── migrations/           # SQL migration scripts for database setup
-│   ├── 001_create_users_table.sql
-│   ├── 002_create_sosial_media_table.sql
-│   └── 003_create_collaboration_sliders_table.sql
-├── public/
-│   └── uploads/
-│       └── sliders/      # Uploaded slider images (auto-created)
-├── certs/                # SSL/TLS certificates for HTTPS (optional)
-├── .env                  # Environment variables (do not commit)
-├── .env.example          # Environment variables template
-├── .gitignore            # Git ignore rules
-├── package.json          # Dependencies and scripts
-└── tsconfig.json         # TypeScript configuration
+│   ├── utils/            # Utilities
+│   │   ├── crypto.ts     # Password hashing
+│   │   ├── jwt.ts        # JWT sign/verify
+│   │   └── file-upload.ts # R2 operations
+│   ├── types.ts          # Type definitions
+│   └── index.ts          # Entry point
+├── schema.sql            # D1 database schema
+├── wrangler.toml         # Workers configuration
+├── package.json          # Dependencies
+├── tsconfig.json         # TypeScript config
+├── .dev.vars             # Local dev variables
+└── DEPLOYMENT.md         # Detailed deployment guide
 ```
 
 ---
 
 ## 📋 Prerequisites
 
-Before running this project, ensure you have the following installed:
+```bash
+# Node.js 18+ or Bun
+node --version  # v18.x or higher
 
-| Software | Minimum Version | Recommended |
-|----------|-----------------|-------------|
-| **Node.js** | v18.x | v20.x LTS |
-| **Bun** (optional) | v1.0.x | Latest |
-| **MySQL** | v5.7 | v8.0+ |
-| **Git** | Any | Latest |
+# Wrangler CLI
+npm install -g wrangler
 
-### Optional Tools
-- **XAMPP / Laragon / WAMP** - For local MySQL server management
-- **phpMyAdmin / MySQL Workbench** - For database visualization
+# Cloudflare account (free tier works)
+npx wrangler login
+```
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Quick Start
 
-### Step 1: Clone or Download
-
-```bash
-# Navigate to the project directory
-cd D:\ProjekFullStack
-
-# If cloning from repository
-git clone <repository-url> backend-mondrips
-cd backend-mondrips
-
-# Or if copying manually, ensure the folder is named 'backend-mondrips'
-```
-
-### Step 2: Install Dependencies
+### 1. Install Dependencies
 
 ```bash
-# Using Bun (recommended)
 bun install
-
-# Or using npm
+# or
 npm install
 ```
 
-### Step 3: Configure Environment
+### 2. Create D1 Database
 
 ```bash
-# Copy the example environment file
-cp .env.example .env
-
-# Edit .env with your database credentials
-# Use any text editor (VS Code, Notepad++, etc.)
+npx wrangler d1 create db_mondrips
+# Copy the database_id from output
 ```
 
-**Required Environment Variables:**
+Update `wrangler.toml` with your `database_id`.
 
-```env
-PORT=3000
-HOST=localhost
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=db_mondrips
-
-JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-JWT_EXPIRES_IN=15m
-REMEMBER_TOKEN_EXPIRES_IN=30d
-
-NODE_ENV=development
-
-HTTPS=false
-HTTPS_KEY_PATH=./certs/server.key
-HTTPS_CERT_PATH=./certs/server.crt
-```
-
-### Step 4: Setup Database
+### 3. Create R2 Bucket
 
 ```bash
-# Option 1: Using MySQL CLI
-mysql -u root -p < migrations/001_create_users_table.sql
-mysql -u root -p < migrations/002_create_sosial_media_table.sql
-mysql -u root -p < migrations/003_create_collaboration_sliders_table.sql
-
-# Option 2: Using phpMyAdmin
-# 1. Open phpMyAdmin in browser
-# 2. Create database 'db_mondrips'
-# 3. Import each .sql file from migrations/ folder
+npx wrangler r2 bucket create mondrips-uploads
 ```
 
-### Step 5: Create Upload Directory
-
-The upload directory is created automatically on first run. However, you can create it manually:
+### 4. Run Migrations
 
 ```bash
-mkdir -p public/uploads/sliders
+npx wrangler d1 execute db_mondrips --file=schema.sql
 ```
+
+### 5. Set Secrets
+
+```bash
+npx wrangler secret put JWT_SECRET
+# Enter a random string (min 32 characters)
+```
+
+### 6. Run Locally
+
+```bash
+npx wrangler dev
+```
+
+Access at: `http://localhost:8787`
+
+### 7. Deploy
+
+```bash
+npx wrangler deploy
+```
+
+Live at: `https://backend-mondrips.workers.dev`
 
 ---
 
 ## ⚙️ Configuration
 
-### Database Configuration
+### wrangler.toml
 
-Edit the database connection in `.env`:
+```toml
+name = "backend-mondrips"
+main = "src/index.ts"
+compatibility_date = "2025-02-18"
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DB_HOST` | MySQL server host | `localhost` |
-| `DB_PORT` | MySQL server port | `3306` |
-| `DB_USER` | MySQL username | `root` |
-| `DB_PASSWORD` | MySQL password | (empty) |
-| `DB_NAME` | Database name | `db_mondrips` |
+[[d1_databases]]
+binding = "DB"
+database_name = "db_mondrips"
+database_id = "your-database-id"
 
-### JWT Configuration
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "mondrips-uploads"
 
-| Variable | Description | Recommended |
-|----------|-------------|-------------|
-| `JWT_SECRET` | Secret key for signing tokens | 32+ random characters |
-| `JWT_EXPIRES_IN` | Access token validity | `15m` |
-| `REMEMBER_TOKEN_EXPIRES_IN` | Remember me token validity | `30d` |
-
----
-
-## ▶️ Running the Server
-
-### Development Mode (with hot-reload)
-
-```bash
-# Using Bun
-bun run dev
-
-# Using Node.js with ts-node
-npx ts-node src/index.ts
+[vars]
+JWT_EXPIRES_IN = "15m"
+REMEMBER_TOKEN_EXPIRES_IN = "30d"
+NODE_ENV = "production"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
 ```
 
-### Production Mode
+### Secrets (via CLI)
 
 ```bash
-# Using Bun
-bun run start
-
-# Using Node.js
-node dist/index.ts
+npx wrangler secret put JWT_SECRET
 ```
-
-### HTTPS Mode
-
-```bash
-# 1. Generate SSL certificates
-openssl req -x509 -newkey rsa:4096 -keyout certs/server.key -out certs/server.crt -days 365 -nodes
-
-# 2. Set HTTPS=true in .env
-
-# 3. Run with HTTPS
-bun run start:https
-```
-
-### Default Server Info
-
-| Endpoint | URL |
-|----------|-----|
-| **Base URL** | `http://localhost:3000` |
-| **API Documentation** | `http://localhost:3000/api-docs` |
-| **Health Check** | `http://localhost:3000/health` |
-| **OpenAPI JSON** | `http://localhost:3000/openapi.json` |
 
 ---
 
 ## 📚 API Documentation
 
-### Interactive Documentation
+### Interactive Docs
 
-Access the Swagger UI at: **`http://localhost:3000/api-docs`**
+Access Swagger UI at:
+- **Local**: `http://localhost:8787/docs`
+- **Production**: `https://backend-mondrips.workers.dev/docs`
 
-The Swagger UI provides:
-- Interactive API testing directly from browser
-- Request/response schema visualization
-- Authentication token management
-- Try-it-out functionality for all endpoints
-
-### API Endpoints Overview
+### Endpoints Overview
 
 #### Authentication
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/register` | No | Register new user |
-| POST | `/api/auth/login` | No | Login with credentials |
-| POST | `/api/auth/refresh` | Cookie | Refresh access token |
-| POST | `/api/auth/logout` | Bearer | Logout user |
-| PUT | `/api/auth/change-password` | Bearer | Change password |
-| GET | `/api/auth/me` | Bearer | Get current user |
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| POST | `/api/auth/register` | No |
+| POST | `/api/auth/login` | No |
+| POST | `/api/auth/refresh` | Cookie |
+| POST | `/api/auth/logout` | Bearer |
+| PUT | `/api/auth/change-password` | Bearer |
+| GET | `/api/auth/me` | Bearer |
 
 #### Social Media
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/sosial-media` | Bearer | List user's social media |
-| GET | `/api/sosial-media/:id` | Bearer | Get specific social media |
-| POST | `/api/sosial-media` | Bearer | Create social media |
-| PUT | `/api/sosial-media/:id` | Bearer | Update social media |
-| DELETE | `/api/sosial-media/:id` | Bearer | Delete social media |
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| GET | `/api/sosial-media` | Bearer |
+| POST | `/api/sosial-media` | Bearer |
+| PUT | `/api/sosial-media/:id` | Bearer |
+| DELETE | `/api/sosial-media/:id` | Bearer |
 
 #### Collaboration Sliders
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/collaboration-sliders/public` | No | Get active sliders |
-| GET | `/api/collaboration-sliders` | Bearer | List user's sliders |
-| GET | `/api/collaboration-sliders/:id` | Bearer | Get specific slider |
-| POST | `/api/collaboration-sliders` | Bearer | Create slider (multipart) |
-| PUT | `/api/collaboration-sliders/:id` | Bearer | Update slider (multipart) |
-| DELETE | `/api/collaboration-sliders/:id` | Bearer | Delete slider |
-| PATCH | `/api/collaboration-sliders/:id/order` | Bearer | Update display order |
-| PATCH | `/api/collaboration-sliders/:id/status` | Bearer | Toggle active status |
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| GET | `/api/collaboration-sliders/public` | No |
+| GET | `/api/collaboration-sliders` | Bearer |
+| POST | `/api/collaboration-sliders` | Bearer (multipart) |
+| PUT | `/api/collaboration-sliders/:id` | Bearer (multipart) |
+| DELETE | `/api/collaboration-sliders/:id` | Bearer |
+| PATCH | `/api/collaboration-sliders/:id/order` | Bearer |
+| PATCH | `/api/collaboration-sliders/:id/status` | Bearer |
 
 ---
 
-## 🔒 Security & Code Standards
+## 🔒 Security
 
-### Authentication & Authorization
+### Password Hashing
 
-- **JWT-based authentication** with short-lived access tokens
-- **HTTPOnly cookies** for remember-me functionality (prevents XSS)
-- **Middleware protection** on all authenticated endpoints
-- **Role-based access control** ready (role field in users table)
+```typescript
+// Uses Web Crypto API SHA-256
+const hash = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+```
 
-### Input Validation
+### JWT Implementation
 
-- **Zod schema validation** on all request bodies
-- **URL format validation** for link fields
-- **Length constraints** on all string inputs
-- **Type coercion** for numeric fields (display_order, is_active)
+```typescript
+// HS256 with Web Crypto API
+const signature = await crypto.subtle.sign('HMAC', key, data);
+```
 
 ### File Upload Security
 
-| Feature | Implementation |
-|---------|----------------|
-| **File Type Validation** | Only JPG, JPEG, PNG, WEBP allowed |
-| **File Size Limit** | Maximum 2MB per file |
-| **Unique Filenames** | Timestamp + random string prevents overwrites |
-| **Automatic Cleanup** | Old files deleted on update/delete |
-| **Directory Isolation** | Files stored in dedicated `public/uploads/sliders/` |
+- **Type Validation**: Only JPG, JPEG, PNG, WEBP
+- **Size Limit**: Max 2MB
+- **Unique Names**: Timestamp + random string
+- **R2 Storage**: No filesystem access
 
-### Password Security
+### CORS
 
-- **bcrypt hashing** with 12 salt rounds
-- **Never stored in plain text**
-- **Minimum 8 characters** with alphanumeric requirement
+Configurable origins via `CORS_ORIGINS` environment variable.
 
-### CORS Configuration
+---
 
-```typescript
-{
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'],
-  credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-}
+## 🌐 Deployment
+
+### Deploy Commands
+
+```bash
+# Production
+npx wrangler deploy
+
+# Staging
+npx wrangler deploy --env staging
+
+# Dry run (test build)
+npx wrangler deploy --dry-run
 ```
 
-### Clean Architecture Principles
+### Environment-Specific Deployments
 
-1. **Controllers**: Handle HTTP requests, validate input, format responses
-2. **Services**: Contain business logic, orchestrate repositories
-3. **Repositories**: Direct database interaction, no business logic
-4. **Models**: TypeScript interfaces and DTOs for type safety
+```bash
+# Production
+npx wrangler deploy --env production
 
-### Error Handling
+# Staging
+npx wrangler deploy --env staging
+```
 
-- Consistent JSON response format: `{ success: boolean, message: string, data?: any }`
-- Proper HTTP status codes (200, 201, 400, 401, 404, 500)
-- Zod validation errors include field-specific messages
-- Global error handler for uncaught exceptions
+### Monitoring
+
+```bash
+# Real-time logs
+npx wrangler tail
+
+# Production logs only
+npx wrangler tail --env production
+```
 
 ---
 
 ## 🗄 Database Schema
 
-### Users Table
+### Users
 
 ```sql
-users (
-  id_user INT PRIMARY KEY AUTO_INCREMENT,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  username VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,          -- bcrypt hashed
-  full_name VARCHAR(255) NOT NULL,
-  role VARCHAR(50) DEFAULT 'user',
-  is_active TINYINT(1) DEFAULT 1,
-  remember_token VARCHAR(255) NULL,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP,
-  last_login TIMESTAMP NULL
-)
+CREATE TABLE users (
+  id_user INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  role TEXT DEFAULT 'user',
+  is_active INTEGER DEFAULT 1,
+  remember_token TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login DATETIME
+);
 ```
 
-### Social Media Table
+### Sosial Media
 
 ```sql
-sosial_media (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  id_user BIGINT NOT NULL,                  -- FK to users(id_user)
-  nama_platform VARCHAR(50) NOT NULL,
-  username_path VARCHAR(255) NOT NULL,
-  icon_class VARCHAR(100) NULL,
+CREATE TABLE sosial_media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id_user INTEGER NOT NULL,
+  nama_platform TEXT NOT NULL,
+  username_path TEXT NOT NULL,
+  icon_class TEXT,
   link_url TEXT NOT NULL,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
-)
+);
 ```
 
-### Collaboration Sliders Table
+### Collaboration Sliders
 
 ```sql
-collaboration_sliders (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(150) NOT NULL,
-  image_path VARCHAR(255) NOT NULL,         -- Path to uploaded file
-  description TEXT NULL,
-  link_url VARCHAR(255) NULL,
-  display_order INT DEFAULT 0,
-  is_active TINYINT(1) DEFAULT 1,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP,
-  id_user BIGINT NOT NULL,                  -- FK to users(id_user)
+CREATE TABLE collaboration_sliders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  image_path TEXT NOT NULL,
+  description TEXT,
+  link_url TEXT,
+  display_order INTEGER DEFAULT 0,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  id_user INTEGER NOT NULL,
   FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
-)
+);
 ```
+
+---
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+| Error | Solution |
+|-------|----------|
+| Database not found | Check `database_id` in wrangler.toml |
+| Bucket not found | Run `npx wrangler r2 bucket create mondrips-uploads` |
+| Invalid JWT_SECRET | Run `npx wrangler secret put JWT_SECRET` |
+| Module not found | Run `bun install` or `npm install` |
+
+---
+
+## 📚 Resources
+
+- [Wrangler Docs](https://developers.cloudflare.com/workers/wrangler/)
+- [D1 Database](https://developers.cloudflare.com/d1/)
+- [R2 Storage](https://developers.cloudflare.com/r2/)
+- [Hono Docs](https://hono.dev/)
 
 ---
 
 ## 📝 License
 
-This project is proprietary software. All rights reserved.
+Proprietary software. All rights reserved.
 
 ---
 
-## 👥 Support
-
-For questions, issues, or feature requests, please contact the development team or refer to the API documentation at `/api-docs`.
-
----
-
-**Built with ❤️ using Hono & TypeScript**
+**Built with ❤️ on Cloudflare Workers**

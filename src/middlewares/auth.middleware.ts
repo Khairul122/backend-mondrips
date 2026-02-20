@@ -1,9 +1,8 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
 import { AuthService } from '../services/auth.service';
+import { AppEnv } from '../types';
 
-const authService = new AuthService();
-
-export const authMiddleware: MiddlewareHandler = async (c: Context, next: Next) => {
+export const authMiddleware: MiddlewareHandler<AppEnv> = async (c: Context<AppEnv>, next: Next) => {
   const authHeader = c.req.header('Authorization');
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -17,8 +16,15 @@ export const authMiddleware: MiddlewareHandler = async (c: Context, next: Next) 
   }
 
   const token = authHeader.substring(7);
+  const jwtSecret = c.env.JWT_SECRET;
 
   try {
+    const authService = new AuthService(
+      c.get('userRepository'),
+      jwtSecret,
+      c.env.JWT_EXPIRES_IN,
+      c.env.REMEMBER_TOKEN_EXPIRES_IN
+    );
     const payload = authService.verifyToken(token);
     c.set('user', payload);
     await next();
@@ -33,12 +39,20 @@ export const authMiddleware: MiddlewareHandler = async (c: Context, next: Next) 
   }
 };
 
-export const optionalAuthMiddleware: MiddlewareHandler = async (c: Context, next: Next) => {
+export const optionalAuthMiddleware: MiddlewareHandler<AppEnv> = async (c: Context<AppEnv>, next: Next) => {
   const authHeader = c.req.header('Authorization');
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
+    const jwtSecret = c.env.JWT_SECRET;
+
     try {
+      const authService = new AuthService(
+        c.get('userRepository'),
+        jwtSecret,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
       const payload = authService.verifyToken(token);
       c.set('user', payload);
     } catch (error) {

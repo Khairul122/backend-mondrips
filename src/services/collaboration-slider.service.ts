@@ -1,5 +1,7 @@
 import { CollaborationSliderRepository } from '../repositories/collaboration-slider.repository';
-import { CollaborationSliderResponse, CreateCollaborationSliderDTO } from '../models/collaboration-slider.model';
+import { CollaborationSliderResponse } from '../models/collaboration-slider.model';
+import Database from '../config/database';
+import { R2Bucket } from '@cloudflare/workers-types';
 import { deleteFile } from '../utils/file-upload';
 
 export interface CreateCollaborationSliderInput {
@@ -22,9 +24,11 @@ export interface UpdateCollaborationSliderInput {
 
 export class CollaborationSliderService {
   private collaborationSliderRepository: CollaborationSliderRepository;
+  private bucket: R2Bucket;
 
-  constructor() {
-    this.collaborationSliderRepository = new CollaborationSliderRepository();
+  constructor(db: Database, bucket: R2Bucket) {
+    this.collaborationSliderRepository = new CollaborationSliderRepository(db);
+    this.bucket = bucket;
   }
 
   async create(userId: number, input: CreateCollaborationSliderInput): Promise<CollaborationSliderResponse> {
@@ -89,7 +93,7 @@ export class CollaborationSliderService {
     }
 
     if (input.image_path && oldImagePath) {
-      deleteFile(oldImagePath);
+      await deleteFile(this.bucket, oldImagePath);
     }
 
     await this.collaborationSliderRepository.update(id, input);
@@ -110,22 +114,10 @@ export class CollaborationSliderService {
 
     const slider = await this.collaborationSliderRepository.findById(id);
     if (slider && slider.image_path) {
-      deleteFile(slider.image_path);
+      await deleteFile(this.bucket, slider.image_path);
     }
 
     await this.collaborationSliderRepository.delete(id);
-  }
-
-  async deleteImageOnly(id: number, userId: number): Promise<void> {
-    const exists = await this.collaborationSliderRepository.existsForUser(id, userId);
-    if (!exists) {
-      throw new Error('Collaboration slider not found');
-    }
-
-    const slider = await this.collaborationSliderRepository.findById(id);
-    if (slider && slider.image_path) {
-      deleteFile(slider.image_path);
-    }
   }
 
   private toCollaborationSliderResponse(slider: CollaborationSliderResponse): CollaborationSliderResponse {

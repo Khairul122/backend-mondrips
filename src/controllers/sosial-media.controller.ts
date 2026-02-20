@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { SosialMediaService } from '../services/sosial-media.service';
 import { z } from 'zod';
+import { AppEnv } from '../types';
+import Database from '../config/database';
 
 const createSosialMediaSchema = z.object({
   nama_platform: z.string().min(1).max(50),
@@ -17,13 +19,9 @@ const updateSosialMediaSchema = z.object({
 });
 
 export class SosialMediaController {
-  private sosialMediaService: SosialMediaService;
+  constructor() {}
 
-  constructor() {
-    this.sosialMediaService = new SosialMediaService();
-  }
-
-  async index(c: Context) {
+  async index(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -36,7 +34,8 @@ export class SosialMediaController {
         );
       }
 
-      const sosialMediaList = await this.sosialMediaService.findAllByUserId(user.id_user);
+      const service = new SosialMediaService(c.env.DB);
+      const sosialMediaList = await service.findAllByUserId(user.id_user);
 
       return c.json({
         success: true,
@@ -63,7 +62,7 @@ export class SosialMediaController {
     }
   }
 
-  async show(c: Context) {
+  async show(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -87,7 +86,8 @@ export class SosialMediaController {
         );
       }
 
-      const sosialMedia = await this.sosialMediaService.findById(id, user.id_user);
+      const service = new SosialMediaService(c.env.DB);
+      const sosialMedia = await service.findById(id, user.id_user);
 
       return c.json({
         success: true,
@@ -114,7 +114,7 @@ export class SosialMediaController {
     }
   }
 
-  async store(c: Context) {
+  async store(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -130,7 +130,8 @@ export class SosialMediaController {
       const body = await c.req.json();
       const validated = createSosialMediaSchema.parse(body);
 
-      const sosialMedia = await this.sosialMediaService.create(user.id_user, validated);
+      const service = new SosialMediaService(c.env.DB);
+      const sosialMedia = await service.create(user.id_user, validated);
 
       return c.json(
         {
@@ -172,7 +173,7 @@ export class SosialMediaController {
     }
   }
 
-  async update(c: Context) {
+  async update(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -199,7 +200,8 @@ export class SosialMediaController {
       const body = await c.req.json();
       const validated = updateSosialMediaSchema.parse(body);
 
-      const sosialMedia = await this.sosialMediaService.update(id, user.id_user, validated);
+      const service = new SosialMediaService(c.env.DB);
+      const sosialMedia = await service.update(id, user.id_user, validated);
 
       return c.json({
         success: true,
@@ -238,7 +240,7 @@ export class SosialMediaController {
     }
   }
 
-  async destroy(c: Context) {
+  async destroy(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -262,7 +264,8 @@ export class SosialMediaController {
         );
       }
 
-      await this.sosialMediaService.delete(id, user.id_user);
+      const service = new SosialMediaService(c.env.DB);
+      await service.delete(id, user.id_user);
 
       return c.json({
         success: true,

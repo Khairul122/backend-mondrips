@@ -1,6 +1,8 @@
 import { Context } from 'hono';
 import { AuthService } from '../services/auth.service';
+import { UserRepository } from '../repositories/user.repository';
 import { z } from 'zod';
+import { AppEnv } from '../types';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -21,18 +23,21 @@ const changePasswordSchema = z.object({
 });
 
 export class AuthController {
-  private authService: AuthService;
+  constructor() {}
 
-  constructor() {
-    this.authService = new AuthService();
-  }
-
-  async register(c: Context) {
+  async register(c: Context<AppEnv>) {
     try {
       const body = await c.req.json();
       const validated = registerSchema.parse(body);
 
-      const user = await this.authService.register(validated);
+      const authService = new AuthService(
+        c.get('userRepository'),
+        c.env.JWT_SECRET,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
+
+      const user = await authService.register(validated);
 
       return c.json(
         {
@@ -74,19 +79,27 @@ export class AuthController {
     }
   }
 
-  async login(c: Context) {
+  async login(c: Context<AppEnv>) {
     try {
       const body = await c.req.json();
       const validated = loginSchema.parse(body);
 
-      const result = await this.authService.login({
+      const authService = new AuthService(
+        c.get('userRepository'),
+        c.env.JWT_SECRET,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
+
+      const result = await authService.login({
         identifier: validated.identifier,
         password: validated.password,
         rememberMe: validated.remember_me,
       });
 
       if (result.tokens.refreshToken) {
-        c.header('Set-Cookie', `remember_token=${result.tokens.refreshToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${30 * 24 * 60 * 60}`);
+        const maxAge = 30 * 24 * 60 * 60;
+        c.header('Set-Cookie', `remember_token=${result.tokens.refreshToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`);
       }
 
       return c.json({
@@ -96,7 +109,7 @@ export class AuthController {
           user: result.user,
           access_token: result.tokens.accessToken,
           token_type: 'Bearer',
-          expires_in: process.env.JWT_EXPIRES_IN || '15m',
+          expires_in: c.env.JWT_EXPIRES_IN,
         },
       });
     } catch (error) {
@@ -131,7 +144,7 @@ export class AuthController {
     }
   }
 
-  async refresh(c: Context) {
+  async refresh(c: Context<AppEnv>) {
     try {
       const rememberToken = c.req.cookie('remember_token');
 
@@ -145,7 +158,14 @@ export class AuthController {
         );
       }
 
-      const result = await this.authService.refreshAccessToken(rememberToken);
+      const authService = new AuthService(
+        c.get('userRepository'),
+        c.env.JWT_SECRET,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
+
+      const result = await authService.refreshAccessToken(rememberToken);
 
       return c.json({
         success: true,
@@ -153,7 +173,7 @@ export class AuthController {
         data: {
           access_token: result.accessToken,
           token_type: 'Bearer',
-          expires_in: process.env.JWT_EXPIRES_IN || '15m',
+          expires_in: c.env.JWT_EXPIRES_IN,
         },
       });
     } catch (error) {
@@ -177,7 +197,7 @@ export class AuthController {
     }
   }
 
-  async logout(c: Context) {
+  async logout(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -190,7 +210,14 @@ export class AuthController {
         );
       }
 
-      await this.authService.logout(user.id_user);
+      const authService = new AuthService(
+        c.get('userRepository'),
+        c.env.JWT_SECRET,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
+
+      await authService.logout(user.id_user);
 
       c.header('Set-Cookie', 'remember_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
 
@@ -209,7 +236,7 @@ export class AuthController {
     }
   }
 
-  async changePassword(c: Context) {
+  async changePassword(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {
@@ -225,7 +252,14 @@ export class AuthController {
       const body = await c.req.json();
       const validated = changePasswordSchema.parse(body);
 
-      await this.authService.changePassword(
+      const authService = new AuthService(
+        c.get('userRepository'),
+        c.env.JWT_SECRET,
+        c.env.JWT_EXPIRES_IN,
+        c.env.REMEMBER_TOKEN_EXPIRES_IN
+      );
+
+      await authService.changePassword(
         user.id_user,
         validated.current_password,
         validated.new_password
@@ -267,7 +301,7 @@ export class AuthController {
     }
   }
 
-  async me(c: Context) {
+  async me(c: Context<AppEnv>) {
     try {
       const user = c.get('user');
       if (!user) {

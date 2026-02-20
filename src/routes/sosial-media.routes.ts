@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { SosialMediaController } from '../controllers/sosial-media.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
+import { AppEnv } from '../types';
 
 const sosialMediaController = new SosialMediaController();
 
-export const sosialMediaRoutes = new Hono();
+export const sosialMediaRoutes = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variables'] }>();
 
 sosialMediaRoutes.use('*', authMiddleware);
 

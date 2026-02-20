@@ -1,5 +1,6 @@
 import { SosialMediaRepository } from '../repositories/sosial-media.repository';
 import { SosialMediaResponse, CreateSosialMediaDTO } from '../models/sosial-media.model';
+import Database from '../config/database';
 
 export interface CreateSosialMediaInput {
   nama_platform: string;
@@ -18,8 +19,8 @@ export interface UpdateSosialMediaInput {
 export class SosialMediaService {
   private sosialMediaRepository: SosialMediaRepository;
 
-  constructor() {
-    this.sosialMediaRepository = new SosialMediaRepository();
+  constructor(db: Database) {
+    this.sosialMediaRepository = new SosialMediaRepository(db);
   }
 
   async create(userId: number, input: CreateSosialMediaInput): Promise<SosialMediaResponse> {

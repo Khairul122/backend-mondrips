@@ -7,8 +7,8 @@ export interface CollaborationSlider {
   link_url: string | null;
   display_order: number;
   is_active: number;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateCollaborationSliderDTO {
@@ -39,6 +39,6 @@ export interface CollaborationSliderResponse {
   link_url: string | null;
   display_order: number;
   is_active: number;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
 }

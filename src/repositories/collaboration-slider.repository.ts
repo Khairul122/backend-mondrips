@@ -1,37 +1,40 @@
-import { query } from '../config/database';
+import Database from '../config/database';
 import { CollaborationSlider, CreateCollaborationSliderDTO, UpdateCollaborationSliderDTO } from '../models/collaboration-slider.model';
 
 export class CollaborationSliderRepository {
+  private db: Database;
+
+  constructor(db: Database) {
+    this.db = db;
+  }
+
   async findById(id: number): Promise<CollaborationSlider | null> {
-    const rows = await query(
+    const row = await this.db.first<CollaborationSlider>(
       'SELECT * FROM collaboration_sliders WHERE id = ? LIMIT 1',
       [id]
-    ) as CollaborationSlider[];
-    return rows[0] || null;
+    );
+    return row || null;
   }
 
   async findAll(orderBy: 'ASC' | 'DESC' = 'ASC'): Promise<CollaborationSlider[]> {
     const sql = `SELECT * FROM collaboration_sliders ORDER BY display_order ${orderBy}, created_at DESC`;
-    const rows = await query(sql) as CollaborationSlider[];
-    return rows;
+    return await this.db.query<CollaborationSlider>(sql);
   }
 
   async findActiveAll(orderBy: 'ASC' | 'DESC' = 'ASC'): Promise<CollaborationSlider[]> {
     const sql = `SELECT * FROM collaboration_sliders WHERE is_active = 1 ORDER BY display_order ${orderBy}, created_at DESC`;
-    const rows = await query(sql) as CollaborationSlider[];
-    return rows;
+    return await this.db.query<CollaborationSlider>(sql);
   }
 
   async findByUserId(userId: number, orderBy: 'ASC' | 'DESC' = 'ASC'): Promise<CollaborationSlider[]> {
     const sql = `SELECT * FROM collaboration_sliders WHERE id_user = ? ORDER BY display_order ${orderBy}, created_at DESC`;
-    const rows = await query(sql, [userId]) as CollaborationSlider[];
-    return rows;
+    return await this.db.query<CollaborationSlider>(sql, [userId]);
   }
 
   async create(data: CreateCollaborationSliderDTO): Promise<number> {
-    const result = await query(
+    const id = await this.db.insert(
       `INSERT INTO collaboration_sliders (id_user, title, image_path, description, link_url, display_order, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         data.id_user,
         data.title,
@@ -41,8 +44,8 @@ export class CollaborationSliderRepository {
         data.display_order || 0,
         data.is_active !== undefined ? data.is_active : 1,
       ]
-    ) as { insertId: number };
-    return result.insertId;
+    );
+    return id;
   }
 
   async update(id: number, data: UpdateCollaborationSliderDTO): Promise<boolean> {
@@ -78,10 +81,10 @@ export class CollaborationSliderRepository {
       return false;
     }
 
-    fields.push('updated_at = NOW()');
+    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await query(
+    await this.db.execute(
       `UPDATE collaboration_sliders SET ${fields.join(', ')} WHERE id = ?`,
       values
     );
@@ -90,34 +93,23 @@ export class CollaborationSliderRepository {
   }
 
   async delete(id: number): Promise<boolean> {
-    const result = await query(
-      'DELETE FROM collaboration_sliders WHERE id = ?',
-      [id]
-    ) as { affectedRows: number };
-    return result.affectedRows > 0;
+    const result = await this.db.execute('DELETE FROM collaboration_sliders WHERE id = ?', [id]);
+    return (result.meta?.changes || 0) > 0;
   }
 
   async exists(id: number): Promise<boolean> {
-    const rows = await query(
+    const result = await this.db.first<{ count: number }>(
       'SELECT COUNT(*) as count FROM collaboration_sliders WHERE id = ?',
       [id]
-    ) as { count: number }[];
-    return rows[0].count > 0;
+    );
+    return result ? result.count > 0 : false;
   }
 
   async existsForUser(id: number, userId: number): Promise<boolean> {
-    const rows = await query(
+    const result = await this.db.first<{ count: number }>(
       'SELECT COUNT(*) as count FROM collaboration_sliders WHERE id = ? AND id_user = ?',
       [id, userId]
-    ) as { count: number }[];
-    return rows[0].count > 0;
-  }
-
-  async findByIdWithImage(id: number): Promise<CollaborationSlider | null> {
-    const rows = await query(
-      'SELECT id, image_path FROM collaboration_sliders WHERE id = ? LIMIT 1',
-      [id]
-    ) as Pick<CollaborationSlider, 'id' | 'image_path'>[];
-    return rows[0] as unknown as CollaborationSlider | null;
+    );
+    return result ? result.count > 0 : false;
   }
 }

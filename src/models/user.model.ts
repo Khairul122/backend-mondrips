@@ -7,9 +7,9 @@ export interface User {
   role: string;
   is_active: number;
   remember_token: string | null;
-  created_at: Date;
-  updated_at: Date;
-  last_login: Date | null;
+  created_at: string;
+  updated_at: string;
+  last_login: string | null;
 }
 
 export interface CreateUserDTO {
@@ -28,7 +28,7 @@ export interface UpdateUserDTO {
   role?: string;
   is_active?: number;
   remember_token?: string | null;
-  last_login?: Date;
+  last_login?: string;
 }
 
 export interface UserResponse {
@@ -38,7 +38,7 @@ export interface UserResponse {
   full_name: string;
   role: string;
   is_active: number;
-  created_at: Date;
-  updated_at: Date;
-  last_login: Date | null;
+  created_at: string;
+  updated_at: string;
+  last_login: string | null;
 }

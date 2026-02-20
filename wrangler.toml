@@ -1,0 +1,41 @@
+name = "backend-mondrips"
+main = "src/index.ts"
+compatibility_date = "2025-02-18"
+
+# Cloudflare D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "db_mondrips"
+database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
+
+# Cloudflare R2 Storage for file uploads
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "mondrips-uploads"
+
+# Environment variables (non-sensitive)
+[vars]
+JWT_EXPIRES_IN = "15m"
+REMEMBER_TOKEN_EXPIRES_IN = "30d"
+NODE_ENV = "production"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+
+# Secrets (set via: npx wrangler secret put SECRET_NAME)
+# - JWT_SECRET
+# - ADMIN_EMAIL (optional, for initial admin user)
+
+# Production environment
+[env.production]
+name = "backend-mondrips-production"
+compatibility_date = "2025-02-18"
+
+[env.production.vars]
+NODE_ENV = "production"
+
+# Staging environment
+[env.staging]
+name = "backend-mondrips-staging"
+compatibility_date = "2025-02-18"
+
+[env.staging.vars]
+NODE_ENV = "staging"

@@ -1,51 +1,57 @@
-import { query } from '../config/database';
+import Database from '../config/database';
 import { User, CreateUserDTO, UpdateUserDTO } from '../models/user.model';
 
 export class UserRepository {
+  private db: Database;
+
+  constructor(db: Database) {
+    this.db = db;
+  }
+
   async findById(id: number): Promise<User | null> {
-    const rows = await query(
+    const user = await this.db.first<User>(
       'SELECT * FROM users WHERE id_user = ? LIMIT 1',
       [id]
-    ) as User[];
-    return rows[0] || null;
+    );
+    return user || null;
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const rows = await query(
+    const user = await this.db.first<User>(
       'SELECT * FROM users WHERE email = ? LIMIT 1',
       [email]
-    ) as User[];
-    return rows[0] || null;
+    );
+    return user || null;
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const rows = await query(
+    const user = await this.db.first<User>(
       'SELECT * FROM users WHERE username = ? LIMIT 1',
       [username]
-    ) as User[];
-    return rows[0] || null;
+    );
+    return user || null;
   }
 
   async findByEmailOrUsername(identifier: string): Promise<User | null> {
-    const rows = await query(
+    const user = await this.db.first<User>(
       'SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1',
       [identifier, identifier]
-    ) as User[];
-    return rows[0] || null;
+    );
+    return user || null;
   }
 
   async findByRememberToken(token: string): Promise<User | null> {
-    const rows = await query(
+    const user = await this.db.first<User>(
       'SELECT * FROM users WHERE remember_token = ? LIMIT 1',
       [token]
-    ) as User[];
-    return rows[0] || null;
+    );
+    return user || null;
   }
 
   async create(data: CreateUserDTO): Promise<number> {
-    const result = await query(
-      `INSERT INTO users (email, username, password, full_name, role, is_active, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    const id = await this.db.insert(
+      `INSERT INTO users (email, username, password, full_name, role, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         data.email,
         data.username,
@@ -54,8 +60,8 @@ export class UserRepository {
         data.role || 'user',
         1,
       ]
-    ) as { insertId: number };
-    return result.insertId;
+    );
+    return id;
   }
 
   async update(id: number, data: UpdateUserDTO): Promise<boolean> {
@@ -99,10 +105,10 @@ export class UserRepository {
       return false;
     }
 
-    fields.push('updated_at = NOW()');
+    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    await query(
+    await this.db.execute(
       `UPDATE users SET ${fields.join(', ')} WHERE id_user = ?`,
       values
     );
@@ -119,8 +125,8 @@ export class UserRepository {
       params.push(excludeId);
     }
 
-    const rows = await query(sql, params) as { count: number }[];
-    return rows[0].count > 0;
+    const result = await this.db.first<{ count: number }>(sql, params);
+    return result ? result.count > 0 : false;
   }
 
   async usernameExists(username: string, excludeId?: number): Promise<boolean> {
@@ -132,7 +138,7 @@ export class UserRepository {
       params.push(excludeId);
     }
 
-    const rows = await query(sql, params) as { count: number }[];
-    return rows[0].count > 0;
+    const result = await this.db.first<{ count: number }>(sql, params);
+    return result ? result.count > 0 : false;
   }
 }

@@ -3,25 +3,22 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "start:https": "bun run src/index.ts --https",
-    "migrate": "bun run migrations/001_create_users_table.sql"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "db:create": "wrangler d1 create db_mondrips",
+    "db:execute": "wrangler d1 execute db_mondrips --file",
+    "tail": "wrangler tail"
   },
   "dependencies": {
-    "@hono/node-server": "^1.11.0",
     "@hono/swagger-ui": "^0.3.0",
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.3.1",
+    "@hono/zod-validator": "^0.2.0",
     "hono": "^4.3.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.9.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.5",
-    "@types/node": "^20.10.0",
-    "typescript": "^5.3.0"
+    "@cloudflare/workers-types": "^4.20240208.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^4.66.0"
   }
 }
