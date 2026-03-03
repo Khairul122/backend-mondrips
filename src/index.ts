@@ -12,13 +12,49 @@ const app = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variable
 
 app.use('*', logger());
 
+// Dynamic CORS middleware - supports wildcard patterns
 app.use('*', async (c, next) => {
-  const origins = c.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'];
+  const requestOrigin = c.req.header('Origin');
+  const corsOriginsConfig = c.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'];
+  
+  // Function to check if origin matches allowed patterns
+  const isOriginAllowed = (origin: string): boolean => {
+    if (!origin) return false;
+    
+    for (const pattern of corsOriginsConfig) {
+      const trimmedPattern = pattern.trim();
+      
+      // Exact match
+      if (trimmedPattern === origin) return true;
+      
+      // Wildcard pattern: *.example.com matches sub.example.com, api.example.com, etc.
+      if (trimmedPattern.startsWith('*.')) {
+        const baseDomain = trimmedPattern.slice(2); // Remove '*.'
+        if (origin.endsWith('.' + baseDomain) || origin === baseDomain) return true;
+      }
+      
+      // Wildcard pattern: https://*.vercel.app matches any subdomain
+      if (trimmedPattern.includes('*')) {
+        const regexPattern = trimmedPattern
+          .replace(/\./g, '\\.')
+          .replace(/\*/g, '[^.]+');
+        const regex = new RegExp(`^${regexPattern}$`);
+        if (regex.test(origin)) return true;
+      }
+    }
+    return false;
+  };
+  
+  // Determine allowed origin for this request
+  const allowedOrigin = (requestOrigin && isOriginAllowed(requestOrigin)) 
+    ? requestOrigin 
+    : corsOriginsConfig[0]?.trim() || '*';
+  
   const corsMiddleware = cors({
-    origin: origins,
+    origin: allowedOrigin,
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposeHeaders: ['Content-Length', 'X-Request-Id'],
     maxAge: 86400,
   });
