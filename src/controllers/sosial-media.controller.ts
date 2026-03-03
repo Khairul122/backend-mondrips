@@ -34,10 +34,9 @@ export class SosialMediaController {
       }
 
       const service = new SosialMediaService(c.env.DB);
-      
-      // Admin dapat melihat semua data, user biasa hanya data mereka sendiri
-      const sosialMediaList = user.role === 'admin' 
-        ? await service.findAll() 
+
+      const sosialMediaList = user.role === 'admin'
+        ? await service.findAll()
         : await service.findAllByUserId(user.id_user);
 
       return c.json({

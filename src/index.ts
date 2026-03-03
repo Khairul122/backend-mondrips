@@ -12,28 +12,23 @@ const app = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variable
 
 app.use('*', logger());
 
-// Dynamic CORS middleware - supports wildcard patterns
 app.use('*', async (c, next) => {
   const requestOrigin = c.req.header('Origin');
   const corsOriginsConfig = c.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'];
-  
-  // Function to check if origin matches allowed patterns
+
   const isOriginAllowed = (origin: string): boolean => {
     if (!origin) return false;
-    
+
     for (const pattern of corsOriginsConfig) {
       const trimmedPattern = pattern.trim();
-      
-      // Exact match
+
       if (trimmedPattern === origin) return true;
-      
-      // Wildcard pattern: *.example.com matches sub.example.com, api.example.com, etc.
+
       if (trimmedPattern.startsWith('*.')) {
-        const baseDomain = trimmedPattern.slice(2); // Remove '*.'
+        const baseDomain = trimmedPattern.slice(2);
         if (origin.endsWith('.' + baseDomain) || origin === baseDomain) return true;
       }
-      
-      // Wildcard pattern: https://*.vercel.app matches any subdomain
+
       if (trimmedPattern.includes('*')) {
         const regexPattern = trimmedPattern
           .replace(/\./g, '\\.')
@@ -44,12 +39,11 @@ app.use('*', async (c, next) => {
     }
     return false;
   };
-  
-  // Determine allowed origin for this request
-  const allowedOrigin = (requestOrigin && isOriginAllowed(requestOrigin)) 
-    ? requestOrigin 
+
+  const allowedOrigin = (requestOrigin && isOriginAllowed(requestOrigin))
+    ? requestOrigin
     : corsOriginsConfig[0]?.trim() || '*';
-  
+
   const corsMiddleware = cors({
     origin: allowedOrigin,
     credentials: true,
@@ -62,17 +56,14 @@ app.use('*', async (c, next) => {
 });
 
 app.use('/api/auth/*', (c, next) => {
-  // Validate DB binding exists
   if (!c.env.DB) {
     console.error('❌ D1 Database binding is undefined! Check wrangler.toml and deployment.');
     throw new Error('Database binding not configured. Please check wrangler.toml and ensure D1 database is properly bound.');
   }
-  // Pass D1Database directly to UserRepository (no wrapper)
   c.set('userRepository', new UserRepository(c.env.DB));
   return next();
 });
 
-// Validate DB and R2 bindings for other routes
 app.use('/api/sosial-media/*', (c, next) => {
   if (!c.env.DB) {
     console.error('❌ D1 Database binding is undefined!');
@@ -86,12 +77,6 @@ app.use('/api/collaboration-sliders/*', (c, next) => {
     console.error('❌ D1 Database binding is undefined!');
     throw new Error('Database binding not configured.');
   }
-  // R2 validation - skip if not enabled yet
-  // Uncomment after enabling R2:
-  // if (!c.env.UPLOADS) {
-  //   console.error('❌ R2 Bucket binding is undefined! Check wrangler.toml and deployment.');
-  //   throw new Error('R2 Bucket binding not configured.');
-  // }
   return next();
 });
 
@@ -99,7 +84,6 @@ app.route('/api/auth', authRoutes);
 app.route('/api/sosial-media', sosialMediaRoutes);
 app.route('/api/collaboration-sliders', collaborationSliderRoutes);
 
-// Alternative short routes (without /api/auth prefix)
 app.route('/auth', authRoutes);
 
 app.route('/', swaggerDocs);
@@ -135,8 +119,7 @@ app.notFound((c) => {
 app.onError((err, c) => {
   console.error('❌ Error:', err);
   console.error('Stack:', err.stack);
-  
-  // Check for specific binding errors
+
   if (err.message.includes('Database binding')) {
     return c.json(
       {
@@ -147,7 +130,7 @@ app.onError((err, c) => {
       500
     );
   }
-  
+
   return c.json(
     {
       success: false,

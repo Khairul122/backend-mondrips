@@ -1,6 +1,5 @@
 import { D1Database } from '@cloudflare/workers-types';
 
-// Direct D1Database wrapper with simplified methods
 export class Database {
   private db: D1Database;
 
@@ -21,11 +20,8 @@ export class Database {
 
   async first<T>(sql: string, params: unknown[] = []): Promise<T | null> {
     try {
-      console.log('Database.first() called with SQL:', sql);
       const stmt = this.db.prepare(sql).bind(...params);
-      console.log('Statement prepared, calling first()...');
       const result = await stmt.first();
-      console.log('Result from first():', result);
       return result as T | null;
     } catch (error) {
       console.error('Database.first() error:', error);

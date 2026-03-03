@@ -2,72 +2,41 @@ name = "backend-mondrips"
 main = "src/index.ts"
 compatibility_date = "2025-02-18"
 
-# Cloudflare D1 Database
 [[d1_databases]]
 binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
-# Cloudflare R2 Storage for file uploads (Enable after creating bucket via Dashboard)
-# Run: npx wrangler r2 bucket create mondrips-uploads
-# Then uncomment these lines:
-# [[r2_buckets]]
-# binding = "UPLOADS"
-# bucket_name = "mondrips-uploads"
-
-# Environment variables (non-sensitive)
 [vars]
 JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "production"
-# CORS_ORIGINS supports:
-# - Exact domains: https://example.com
-# - Wildcard subdomains: *.example.com (matches api.example.com, app.example.com)
-# - Wildcard patterns: https://*.vercel.app, https://*.netlify.app
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev,*.mondrips.com"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev,https://mondrips.com,*.mondrips.com"
 
-# Secrets (set via: npx wrangler secret put SECRET_NAME)
-# - JWT_SECRET
-# - ADMIN_EMAIL (optional, for initial admin user)
-
-# Production environment
 [env.production]
 name = "backend-mondrips-production"
 compatibility_date = "2025-02-18"
 
-# D1 Database for production
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
-# R2 Bucket for production (Enable after creating bucket)
-# [[env.production.r2_buckets]]
-# binding = "UPLOADS"
-# bucket_name = "mondrips-uploads"
-
 [env.production.vars]
 JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "production"
-# CORS_ORIGINS supports:
-# - Exact domains: https://example.com
-# - Wildcard subdomains: *.example.com (matches api.example.com, app.example.com)
-# - Wildcard patterns: https://*.vercel.app, https://*.netlify.app
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://mondrips.com/"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev,https://mondrips.com,*.mondrips.com"
 
-# Staging environment
 [env.staging]
 name = "backend-mondrips-staging"
 compatibility_date = "2025-02-18"
 
-# D1 Database for staging
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
-# R2 Bucket for staging
 [[env.staging.r2_buckets]]
 binding = "UPLOADS"
 bucket_name = "mondrips-uploads"
@@ -76,8 +45,4 @@ bucket_name = "mondrips-uploads"
 JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "staging"
-# CORS_ORIGINS supports:
-# - Exact domains: https://example.com
-# - Wildcard subdomains: *.example.com (matches api.example.com, app.example.com)
-# - Wildcard patterns: https://*.vercel.app, https://*.netlify.app
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev,*.mondrips.com"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev,https://mondrips.com,*.mondrips.com"

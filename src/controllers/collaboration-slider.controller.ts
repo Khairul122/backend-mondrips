@@ -19,9 +19,8 @@ const updateSliderSchema = z.object({
   is_active: z.coerce.number().int().min(0).max(1).optional(),
 });
 
-// File upload helpers
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 function generateUniqueFilename(originalName: string): string {
   const timestamp = Date.now();
@@ -186,9 +185,7 @@ export class CollaborationSliderController {
 
       const contentType = c.req.header('Content-Type') || '';
 
-      // Handle multipart/form-data (file upload to R2)
       if (contentType.includes('multipart/form-data')) {
-        // Check if R2 is enabled
         if (!c.env.UPLOADS) {
           return c.json(
             {
@@ -200,7 +197,7 @@ export class CollaborationSliderController {
         }
 
         const formData = await c.req.parseFormData();
-        
+
         const imageFile = formData.get('image') as File;
         if (!imageFile || imageFile.size === 0) {
           return c.json(
@@ -212,20 +209,16 @@ export class CollaborationSliderController {
           );
         }
 
-        // Validate file
         await validateFile(imageFile);
 
-        // Generate unique filename and upload to R2
         const filename = generateUniqueFilename(imageFile.name);
         const arrayBuffer = await imageFile.arrayBuffer();
         await c.env.UPLOADS.put(filename, arrayBuffer, {
           httpMetadata: { contentType: imageFile.type },
         });
 
-        // Create public URL (using Workers.dev domain or custom domain)
         const imageUrl = `https://mondrips-uploads.mondrips.workers.dev/${filename}`;
 
-        // Get other form fields
         const title = formData.get('title') as string;
         const description = formData.get('description') as string | null;
         const link_url = formData.get('link_url') as string | null;
@@ -262,7 +255,6 @@ export class CollaborationSliderController {
         );
       }
 
-      // Handle application/json (URL-based image_path)
       const body = await c.req.json();
       if (!body.title) {
         return c.json(
@@ -353,15 +345,13 @@ export class CollaborationSliderController {
 
       const contentType = c.req.header('Content-Type') || '';
 
-      // Handle multipart/form-data (file upload)
       if (contentType.includes('multipart/form-data')) {
         const formData = await c.req.parseFormData();
         const imageFile = formData.get('image') as File;
 
-        // If new image is uploaded
         if (imageFile && imageFile.size > 0) {
           await validateFile(imageFile);
-          
+
           const filename = generateUniqueFilename(imageFile.name);
           const arrayBuffer = await imageFile.arrayBuffer();
           await c.env.UPLOADS.put(filename, arrayBuffer, {
@@ -373,7 +363,6 @@ export class CollaborationSliderController {
           shouldDeleteOldImage = true;
         }
 
-        // Get other form fields
         const title = formData.get('title') as string | undefined;
         const description = formData.get('description') as string | null | undefined;
         const linkUrl = formData.get('link_url') as string | null | undefined;
@@ -403,7 +392,6 @@ export class CollaborationSliderController {
           shouldDeleteOldImage ? oldSlider.image_path : null
         );
 
-        // Delete old image from R2 if replaced
         if (shouldDeleteOldImage && oldSlider.image_path && !oldSlider.image_path.includes('placeholder')) {
           try {
             const oldFilename = oldSlider.image_path.split('/').pop();
@@ -422,7 +410,6 @@ export class CollaborationSliderController {
         });
       }
 
-      // Handle application/json (URL-based image_path)
       const body = await c.req.json();
       const title = body.title as string | undefined;
       const image_path = body.image_path as string | undefined;
@@ -431,7 +418,6 @@ export class CollaborationSliderController {
       const displayOrder = body.display_order as number | undefined;
       const isActive = body.is_active as number | undefined;
 
-      // Check if image_path is being updated
       if (image_path && image_path !== oldSlider.image_path) {
         shouldDeleteOldImage = true;
         newImagePath = image_path;
@@ -460,7 +446,6 @@ export class CollaborationSliderController {
         shouldDeleteOldImage ? oldSlider.image_path : null
       );
 
-      // Delete old image from R2 if replaced
       if (shouldDeleteOldImage && oldSlider.image_path && !oldSlider.image_path.includes('placeholder')) {
         try {
           const oldFilename = oldSlider.image_path.split('/').pop();
@@ -545,7 +530,6 @@ export class CollaborationSliderController {
       const service = new CollaborationSliderService(c.env.DB, c.env.UPLOADS);
       const slider = await service.findById(id, user.id_user);
 
-      // Delete associated image from R2
       if (slider.image_path && !slider.image_path.includes('placeholder')) {
         try {
           const filename = slider.image_path.split('/').pop();
