@@ -34,7 +34,41 @@ export class SosialMediaController {
       }
 
       const service = new SosialMediaService(c.env.DB);
-      const sosialMediaList = await service.findAllByUserId(user.id_user);
+      
+      // Admin dapat melihat semua data, user biasa hanya data mereka sendiri
+      const sosialMediaList = user.role === 'admin' 
+        ? await service.findAll() 
+        : await service.findAllByUserId(user.id_user);
+
+      return c.json({
+        success: true,
+        data: sosialMediaList,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        return c.json(
+          {
+            success: false,
+            message: error.message,
+          },
+          500
+        );
+      }
+
+      return c.json(
+        {
+          success: false,
+          message: 'Failed to retrieve social media list',
+        },
+        500
+      );
+    }
+  }
+
+  async publicIndex(c: Context<AppEnv>) {
+    try {
+      const service = new SosialMediaService(c.env.DB);
+      const sosialMediaList = await service.findAll();
 
       return c.json({
         success: true,

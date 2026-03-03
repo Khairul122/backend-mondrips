@@ -8,6 +8,7 @@ export interface RegisterInput {
   username: string;
   password: string;
   full_name: string;
+  role?: string;
 }
 
 export interface LoginInput {
@@ -59,7 +60,7 @@ export class AuthService {
       username: input.username,
       password: hashedPassword,
       full_name: input.full_name,
-      role: 'user',
+      role: input.role || 'user',
     });
 
     const user = await this.userRepository.findById(userId);

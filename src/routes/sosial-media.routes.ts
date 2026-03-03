@@ -7,7 +7,11 @@ const sosialMediaController = new SosialMediaController();
 
 export const sosialMediaRoutes = new Hono<{ Bindings: AppEnv['Bindings']; Variables: AppEnv['Variables'] }>();
 
-sosialMediaRoutes.use('*', authMiddleware);
+// Public endpoint - no auth required
+sosialMediaRoutes.get('/public', (c) => sosialMediaController.publicIndex(c));
+
+// Protected endpoints - auth required
+sosialMediaRoutes.use('/*', authMiddleware);
 
 sosialMediaRoutes.get('/', (c) => sosialMediaController.index(c));
 sosialMediaRoutes.get('/:id', (c) => sosialMediaController.show(c));

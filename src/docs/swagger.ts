@@ -135,10 +135,11 @@ const getApiDoc = (c: AppEnv) => ({
                 type: 'object',
                 required: ['email', 'username', 'password', 'full_name'],
                 properties: {
-                  email: { type: 'string', format: 'email' },
-                  username: { type: 'string', minLength: 3 },
-                  password: { type: 'string', minLength: 8 },
-                  full_name: { type: 'string' },
+                  email: { type: 'string', format: 'email', example: 'user@example.com' },
+                  username: { type: 'string', minLength: 3, example: 'johndoe' },
+                  password: { type: 'string', minLength: 8, example: 'securepass123' },
+                  full_name: { type: 'string', example: 'John Doe' },
+                  role: { type: 'string', enum: ['user', 'admin'], example: 'user', description: 'User role (default: user)' },
                 },
               },
             },
@@ -236,13 +237,22 @@ const getApiDoc = (c: AppEnv) => ({
         },
       },
     },
+    '/api/sosial-media/public': {
+      get: {
+        tags: ['Sosial Media'],
+        summary: 'List all social media (public)',
+        responses: {
+          '200': { description: 'List retrieved' },
+        },
+      },
+    },
     '/api/sosial-media': {
       get: {
         tags: ['Sosial Media'],
-        summary: 'List social media',
+        summary: 'List user social media (Admin sees all, users see only their own)',
         security: [{ bearerAuth: [] }],
         responses: {
-          '200': { description: 'List retrieved' },
+          '200': { description: 'List retrieved. Admin role: returns all social media. User role: returns only user own social media' },
           '401': { description: 'Unauthorized' },
         },
       },
@@ -359,10 +369,32 @@ const getApiDoc = (c: AppEnv) => ({
       },
       post: {
         tags: ['Collaboration Sliders'],
-        summary: 'Create slider',
+        summary: 'Create slider (supports file upload or URL)',
+        description: 'Create a new collaboration slider. Supports both multipart/form-data (file upload) and application/json (image URL). For file upload: Content-Type: multipart/form-data with fields: title, image (file), description, link_url, display_order, is_active.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'order',
+            in: 'query',
+            schema: { type: 'string', enum: ['ASC', 'DESC'] },
+          },
+        ],
         requestBody: {
           content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['title', 'image'],
+                properties: {
+                  title: { type: 'string', minLength: 1, maxLength: 150, example: 'LA MOUCHE' },
+                  image: { type: 'string', format: 'binary', description: 'Image file (JPG, JPEG, PNG, WEBP, max 2MB)' },
+                  description: { type: 'string', maxLength: 500, nullable: true, example: 'Collaboration partner' },
+                  link_url: { type: 'string', format: 'uri', nullable: true, example: 'https://partner.com' },
+                  display_order: { type: 'integer', example: 1 },
+                  is_active: { type: 'integer', minimum: 0, maximum: 1, example: 1 },
+                },
+              },
+            },
             'application/json': {
               schema: {
                 type: 'object',
@@ -405,7 +437,8 @@ const getApiDoc = (c: AppEnv) => ({
       },
       put: {
         tags: ['Collaboration Sliders'],
-        summary: 'Update slider',
+        summary: 'Update slider (supports file upload or URL)',
+        description: 'Update an existing collaboration slider. Supports both multipart/form-data (file upload) and application/json (image URL). For file upload: send image field with new file to replace.',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -417,6 +450,19 @@ const getApiDoc = (c: AppEnv) => ({
         ],
         requestBody: {
           content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string', minLength: 1, maxLength: 150 },
+                  image: { type: 'string', format: 'binary', description: 'New image file (JPG, JPEG, PNG, WEBP, max 2MB)' },
+                  description: { type: 'string', maxLength: 500, nullable: true },
+                  link_url: { type: 'string', format: 'uri', nullable: true },
+                  display_order: { type: 'integer' },
+                  is_active: { type: 'integer', minimum: 0, maximum: 1 },
+                },
+              },
+            },
             'application/json': {
               schema: {
                 type: 'object',

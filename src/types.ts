@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 
 export type Bindings = {
   DB: D1Database;
-  UPLOADS?: R2Bucket; // Optional - temporarily disabled
+  UPLOADS?: R2Bucket; // Optional - enable after R2 bucket created
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
   REMEMBER_TOKEN_EXPIRES_IN: string;

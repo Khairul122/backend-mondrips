@@ -10,6 +10,7 @@ const registerSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(8).regex(/[A-Za-z]/).regex(/[0-9]/),
   full_name: z.string().min(1).max(100),
+  role: z.enum(['user', 'admin']).optional().default('user'),
 });
 
 const loginSchema = z.object({
@@ -38,7 +39,13 @@ export class AuthController {
         c.env.REMEMBER_TOKEN_EXPIRES_IN
       );
 
-      const user = await authService.register(validated);
+      const user = await authService.register({
+        email: validated.email,
+        username: validated.username,
+        password: validated.password,
+        full_name: validated.full_name,
+        role: validated.role,
+      });
 
       return c.json(
         {

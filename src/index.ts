@@ -50,7 +50,12 @@ app.use('/api/collaboration-sliders/*', (c, next) => {
     console.error('❌ D1 Database binding is undefined!');
     throw new Error('Database binding not configured.');
   }
-  // R2 validation skipped - temporarily disabled
+  // R2 validation - skip if not enabled yet
+  // Uncomment after enabling R2:
+  // if (!c.env.UPLOADS) {
+  //   console.error('❌ R2 Bucket binding is undefined! Check wrangler.toml and deployment.');
+  //   throw new Error('R2 Bucket binding not configured.');
+  // }
   return next();
 });
 

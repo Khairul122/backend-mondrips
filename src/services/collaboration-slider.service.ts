@@ -1,7 +1,6 @@
 import { CollaborationSliderRepository } from '../repositories/collaboration-slider.repository';
-import { CollaborationSliderResponse } from '../models/collaboration-slider.model';
+import { CollaborationSliderResponse, CreateCollaborationSliderDTO } from '../models/collaboration-slider.model';
 import { D1Database } from '@cloudflare/workers-types';
-import { deleteFile } from '../utils/file-upload';
 
 export interface CreateCollaborationSliderInput {
   title: string;
@@ -23,9 +22,9 @@ export interface UpdateCollaborationSliderInput {
 
 export class CollaborationSliderService {
   private collaborationSliderRepository: CollaborationSliderRepository;
-  private bucket?: R2Bucket; // Optional - temporarily disabled
+  private bucket: R2Bucket;
 
-  constructor(db: D1Database, bucket?: R2Bucket) {
+  constructor(db: D1Database, bucket: R2Bucket) {
     this.collaborationSliderRepository = new CollaborationSliderRepository(db);
     this.bucket = bucket;
   }
@@ -83,18 +82,12 @@ export class CollaborationSliderService {
   async update(
     id: number,
     userId: number,
-    input: UpdateCollaborationSliderInput,
-    oldImagePath: string | null
+    input: UpdateCollaborationSliderInput
   ): Promise<CollaborationSliderResponse> {
     const exists = await this.collaborationSliderRepository.existsForUser(id, userId);
     if (!exists) {
       throw new Error('Collaboration slider not found');
     }
-
-    // Skip file deletion - R2 temporarily disabled
-    // if (input.image_path && oldImagePath && this.bucket) {
-    //   await deleteFile(this.bucket, oldImagePath);
-    // }
 
     await this.collaborationSliderRepository.update(id, input);
 
@@ -111,12 +104,6 @@ export class CollaborationSliderService {
     if (!exists) {
       throw new Error('Collaboration slider not found');
     }
-
-    // Skip file deletion - R2 temporarily disabled
-    // const slider = await this.collaborationSliderRepository.findById(id);
-    // if (slider && slider.image_path && this.bucket) {
-    //   await deleteFile(this.bucket, slider.image_path);
-    // }
 
     await this.collaborationSliderRepository.delete(id);
   }

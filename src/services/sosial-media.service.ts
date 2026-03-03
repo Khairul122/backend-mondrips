@@ -47,6 +47,11 @@ export class SosialMediaService {
     return sosialMediaList.map((item) => this.toSosialMediaResponse(item));
   }
 
+  async findAll(): Promise<SosialMediaResponse[]> {
+    const sosialMediaList = await this.sosialMediaRepository.findAll();
+    return sosialMediaList.map((item) => this.toSosialMediaResponse(item));
+  }
+
   async findById(id: number, userId: number): Promise<SosialMediaResponse> {
     const exists = await this.sosialMediaRepository.existsForUser(id, userId);
     if (!exists) {

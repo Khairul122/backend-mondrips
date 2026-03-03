@@ -24,6 +24,13 @@ export class SosialMediaRepository {
     return (rows as any).results as SosialMedia[] || [];
   }
 
+  async findAll(): Promise<SosialMedia[]> {
+    const rows = await this.db
+      .prepare('SELECT * FROM sosial_media ORDER BY created_at DESC')
+      .all();
+    return (rows as any).results as SosialMedia[] || [];
+  }
+
   async create(data: CreateSosialMediaDTO): Promise<number> {
     const result = await this.db
       .prepare(

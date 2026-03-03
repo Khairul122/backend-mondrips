@@ -8,17 +8,19 @@ binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
-# Cloudflare R2 Storage for file uploads (TEMPORARILY DISABLED)
+# Cloudflare R2 Storage for file uploads (Enable after creating bucket via Dashboard)
+# Run: npx wrangler r2 bucket create mondrips-uploads
+# Then uncomment these lines:
 # [[r2_buckets]]
 # binding = "UPLOADS"
 # bucket_name = "mondrips-uploads"
 
 # Environment variables (non-sensitive)
 [vars]
-JWT_EXPIRES_IN = "15m"
+JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "production"
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev"
 
 # Secrets (set via: npx wrangler secret put SECRET_NAME)
 # - JWT_SECRET
@@ -35,11 +37,16 @@ binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
+# R2 Bucket for production (Enable after creating bucket)
+# [[env.production.r2_buckets]]
+# binding = "UPLOADS"
+# bucket_name = "mondrips-uploads"
+
 [env.production.vars]
-JWT_EXPIRES_IN = "15m"
+JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "production"
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev"
 
 # Staging environment
 [env.staging]
@@ -52,8 +59,13 @@ binding = "DB"
 database_name = "db_mondrips"
 database_id = "f1d67084-d9a8-43d2-ad43-cbc37ddfc24a"
 
+# R2 Bucket for staging
+[[env.staging.r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "mondrips-uploads"
+
 [env.staging.vars]
-JWT_EXPIRES_IN = "15m"
+JWT_EXPIRES_IN = "1h"
 REMEMBER_TOKEN_EXPIRES_IN = "30d"
 NODE_ENV = "staging"
-CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+CORS_ORIGINS = "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://backend-mondrips-production.mondrips-api.workers.dev"
